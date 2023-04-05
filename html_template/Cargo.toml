@@ -1,0 +1,9 @@
+[workspace]
+members = [
+    "html_template_macros",
+    "html_template_core",
+    "tests",
+]
+default-members = [
+    "html_template_core",
+]
