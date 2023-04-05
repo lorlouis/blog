@@ -28,6 +28,7 @@ async fn page_404() -> HttpResponse {
         </html>
     }.into();
     HttpResponse::NotFound()
+        .content_type(mime::TEXT_HTML)
         .body(body.to_string())
 }
 
@@ -69,7 +70,9 @@ async fn index() -> impl Responder {
             </body>
         </html>
     }.into();
-    HttpResponse::Ok().body(body.to_string())
+    HttpResponse::Ok()
+        .content_type(mime::TEXT_HTML)
+        .body(body.to_string())
 }
 
 
@@ -89,6 +92,7 @@ async fn articles<'a>(info: web::Query<Page>) -> impl Responder + 'a {
     }.into();
 
     HttpResponse::Ok()
+        .content_type(mime::TEXT_HTML)
         .body(body.to_string())
 }
 
@@ -120,6 +124,7 @@ async fn article<'a>(title: web::Path<String>) -> impl Responder + 'a {
     }.into();
 
     HttpResponse::Ok()
+        .content_type(mime::TEXT_HTML)
         .body(body.to_string())
 }
 

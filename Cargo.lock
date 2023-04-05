@@ -1169,6 +1169,7 @@ dependencies = [
  "html_template_core",
  "html_template_macros",
  "markdown",
+ "mime",
  "serde",
 ]
 
