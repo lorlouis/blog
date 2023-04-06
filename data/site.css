@@ -8,6 +8,20 @@
     --palette-lightest: #fffcf2;
 }
 
+#header_top_div {
+
+    background-color: var(--palette-dark);
+}
+
+h3.list_element {
+    display: inline;
+    padding: 1ch;
+}
+
+.header_element {
+    display: inline-block;
+    padding: 1ch;
+}
 
 tr,td {
     color: var(--palette-light);
@@ -65,4 +79,15 @@ a:visited {
 p {
     color: var(--palette-lightest);
     text-align: justify;
+}
+
+
+section.footnotes h2 {
+    font-size: medium;
+    color: var(--palette-accent);
+}
+
+section.footnotes > ol {
+    font-size: medium;
+    color: var(--palette-light);
 }
