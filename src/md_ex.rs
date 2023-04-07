@@ -1,5 +1,5 @@
 use std::collections::BTreeMap;
-use std::io::{Read, BufRead, self};
+use std::io::{BufRead, self};
 
 pub fn md_to_html(s: &str) -> String {
     markdown::to_html_with_options(
@@ -44,6 +44,7 @@ pub struct ExtendedMd {
 }
 
 impl ExtendedMd {
+
     pub fn read_header(reader: impl BufRead) -> Result<BTreeMap<String, String>, HeaderError> {
         let mut map = BTreeMap::new();
         for res in reader.lines() {

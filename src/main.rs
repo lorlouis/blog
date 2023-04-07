@@ -6,9 +6,12 @@ use serde::Deserialize;
 use html_template_core::Root;
 use html_template_macros::html;
 
+use std::fs::File;
 use std::path::PathBuf;
-use std::fs::{File, read_dir};
+use tokio::fs::read_dir;
 use std::io::BufReader;
+
+use time::OffsetDateTime;
 
 const BASE_ARTICLE_PATH: &str = "./articles/";
 
@@ -72,14 +75,24 @@ fn common_header() -> String {
     }.to_string()
 }
 
+fn common_footer() -> String {
+    let now = OffsetDateTime::now_utc();
+    let year = now.year();
+    html! {
+        <p id="copyright">
+        {[move] format!("copyright Louis Sven Goulet 2023-{}", year)}
+        </p>
+    }.to_string()
+}
+
 fn common_head(title: String, author: Option<String>, blurb: Option<String>) -> String {
     let author = author.unwrap_or_else(|| "Louis Sven Goulet".to_string());
     html! {
         <title>{title.clone()}</title>
         <meta charset="UTF-8">
         {
-            blurb.clone().into_iter().map(|v| html!{
-                <meta name="description" content={[move] v.to_string()}>
+            blurb.iter().map(|v| html!{
+                <meta name="description" content={[move] format!("\"{}\"", v)}>
             }).collect()
         }
         <base href="/" >
@@ -104,6 +117,9 @@ async fn index() -> impl Responder {
                 <h1>"Hello world"</h1>
 
             </body>
+            <footer>
+            { common_footer() }
+            </footer>
         </html>
     }.into();
     HttpResponse::Ok()
@@ -114,36 +130,40 @@ async fn index() -> impl Responder {
 
 #[get("/articles")]
 async fn articles<'a>(info: web::Query<Page>) -> impl Responder + 'a {
-    const ARTICLES_PER_PAGE: usize = 10;
+    const ARTICLES_PER_PAGE: usize = 15;
 
     let page = info.0.p;
 
-    let find_articles = || -> Result<_, std::io::Error> {
-        let dir = read_dir("articles")?;
-        let mut articles = Vec::new();
-        for entry in dir.flatten() {
-            let metadata = entry.metadata()?;
-            if metadata.is_file()
-                && entry.file_name().to_string_lossy().to_lowercase().ends_with(".md") {
-                    let file = File::open(entry.path())?;
-                    let article_data = match md_ex::ExtendedMd::read_header(BufReader::new(file)) {
-                        Ok(v) => v,
-                        Err(e) => {
-                            // ignore the error
-                            eprintln!("ran into an error: {e:?} for file: {}", entry.path().display());
-                            continue
-                        }
-                    };
-                    let date = article_data.get("Date")
-                        .cloned()
-                        .unwrap_or_else(|| "4096-03-23".to_string());
-                    articles.push((date, entry.file_name().to_string_lossy().to_string(), article_data));
-            }
-        }
-        Ok(articles)
-    };
+    let mut dir = yeet_500!(read_dir("articles").await);
+    let mut articles = Vec::new();
+    loop {
+        // ugly but I can't flatten due to the await
+        let res = dir.next_entry().await;
+        let entry = match yeet_500!(res) {
+            Some(v) => v,
+            None => break,
+        };
 
-    let mut articles = yeet_500!(find_articles());
+        let metadata = yeet_500!(entry.metadata().await);
+        if metadata.is_file()
+            && entry.file_name().to_string_lossy().to_lowercase().ends_with(".md") {
+                // normal std::fs::File because tokio's async BufReader is really annoying
+                let file = BufReader::new(yeet_500!(File::open(entry.path())));
+                let article_data = match md_ex::ExtendedMd::read_header(file) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        // ignore the error
+                        eprintln!("ran into an error: {e:?} for file: {}", entry.path().display());
+                        continue
+                    }
+                };
+                let date = article_data.get("Date")
+                    .cloned()
+                    .unwrap_or_else(|| "31005-12-01".to_string());
+                articles.push((date, entry.file_name().to_string_lossy().to_string(), article_data));
+        }
+    }
+
     let last_page = (articles.len() / ARTICLES_PER_PAGE).saturating_sub(1);
     let cur_page = last_page.min(page as usize);
 
@@ -164,13 +184,15 @@ async fn articles<'a>(info: web::Query<Page>) -> impl Responder + 'a {
                 { common_header() }
 
                 <h1>Articles</h1>
-                <div id="article_container">
+                <div
+                    id="article_container"
+                    style={format!("\"height:{}ch;\"", ARTICLES_PER_PAGE * 3)}
+                >
                 {
                     trimmed_articles.iter()
                         .map(|(date, name, data)| {
                             let title = data.get("Title")
-                                .cloned()
-                                .unwrap_or_else(|| name.clone());
+                                .unwrap_or(name);
                             html! {
                             <div>
                                 <h3 class="list_element">
@@ -211,6 +233,10 @@ async fn articles<'a>(info: web::Query<Page>) -> impl Responder + 'a {
                     id="link_last_page"
                     title="last page"
                 >&gt;&gt;</a>
+                </div>
+                <footer>
+                { common_footer() }
+                </footer>
             </body>
         </html>
     }.into();
@@ -231,21 +257,24 @@ async fn article<'a>(title: web::Path<String>) -> impl Responder + 'a {
 
     let markdown = yeet_404!(md_ex::ExtendedMd::from_bufread(BufReader::new(file)));
 
-    let real_title = markdown.header.get("Title").unwrap_or(&title).clone();
-    let author = markdown.header.get("Author").cloned();
-    let blurb = markdown.header.get("Blurb").cloned();
+    let real_title = markdown.header.get("Title").unwrap_or(&title);
+    let author = markdown.header.get("Author");
+    let blurb = markdown.header.get("Blurb");
 
     let body: Root = html!{
         <!DOCTYPE html>
         <html>
             <head>
-                {common_head(real_title.clone(), author.clone(), blurb.clone())}
+                {common_head(real_title.clone(), author.cloned(), blurb.cloned())}
             </head>
             <body>
                 <header>
                 { common_header() }
                 </header>
                 { markdown.to_html() }
+                <footer>
+                { common_footer() }
+                </footer>
             </body>
         </html>
     }.into();

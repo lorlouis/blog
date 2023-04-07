@@ -17,10 +17,13 @@
     flex-wrap: nowrap;
     justify-content: space-between;
     padding: 1ch;
+    background-color: var(--palette-dark);
 }
 
-#article_container {
-    height: 30ch;
+#copyright {
+    font-size: x-small;
+    text-align: center;
+    color: gray;
 }
 
 .article_link {
@@ -63,11 +66,14 @@ pre {
     display: block;
     margin-left: auto;
     margin-right: auto;
+    text-align: center;
     width: 80ch;
 }
 
 code {
     color: var(--palette-accent);
+    text-align: left;
+    display:inline-block;
     font-size: larger;
     font-weight: bold;
 }
