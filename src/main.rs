@@ -79,11 +79,11 @@ fn common_head(title: String, author: Option<String>, blurb: Option<String>) -> 
         <meta charset="UTF-8">
         {
             blurb.clone().into_iter().map(|v| html!{
-                <meta name="description" content={v.to_string()}>
+                <meta name="description" content={[move] v.to_string()}>
             }).collect()
         }
         <base href="/" >
-        <meta name="author" content={author.clone()}>
+        <meta name="author" content={[move] format!("\"{}\"", author)}>
         <link rel="stylesheet" href="data/site.css">
     }.to_string()
 }
@@ -114,7 +114,7 @@ async fn index() -> impl Responder {
 
 #[get("/articles")]
 async fn articles<'a>(info: web::Query<Page>) -> impl Responder + 'a {
-    const ARTICLES_PER_PAGE: usize = 1;
+    const ARTICLES_PER_PAGE: usize = 10;
 
     let page = info.0.p;
 
@@ -164,9 +164,9 @@ async fn articles<'a>(info: web::Query<Page>) -> impl Responder + 'a {
                 { common_header() }
 
                 <h1>Articles</h1>
-                <div>
+                <div id="article_container">
                 {
-                    trimmed_articles.clone().into_iter()
+                    trimmed_articles.iter()
                         .map(|(date, name, data)| {
                             let title = data.get("Title")
                                 .cloned()
@@ -174,22 +174,43 @@ async fn articles<'a>(info: web::Query<Page>) -> impl Responder + 'a {
                             html! {
                             <div>
                                 <h3 class="list_element">
-                                    { format!("{}", date) }
+                                    {[move] format!("{}", date) }
                                 </h3>
                                 <h3 class="list_element">
-                                    <a href={format!("article/{}", name)}>
-                                        {format!("{}", title)}
+                                    <a href={[move] format!("\"article/{}\"", name)}>
+                                        {[move] format!("{}", title)}
                                     </a>
                                 </h3>
                             </div>
                         }
                     }).collect()
                 }
-                <div>
-                <a href="/articles" id="link_first_page">&lt;&lt;</a>
-                <a href={format!{"articles?p={}", cur_page.saturating_sub(1)}} id="link_last_page">&lt;</a>
-                <a href={format!{"articles?p={}", cur_page.saturating_add(1)}} id="link_next_page">&gt;</a>
-                <a href={format!{"articles?p={}", last_page}} id="link_last_page">&gt;&gt;</a>
+                </div>
+                <div id="page_link_div">
+                <a
+                    href="/articles"
+                    class="article_link"
+                    id="link_first_page"
+                    title="fist page"
+                >&lt;&lt;</a>
+                <a
+                    href={format!{"\"articles?p={}\"", cur_page.saturating_sub(1)}}
+                    class="article_link"
+                    id="link_previous_page"
+                    title="previous page"
+                >&lt;</a>
+                <a
+                    href={format!{"\"articles?p={}\"", cur_page.saturating_add(1)}}
+                    class="article_link"
+                    id="link_next_page"
+                    title="next page"
+                >&gt;</a>
+                <a
+                    href={format!{"\"articles?p={}\"", last_page}}
+                    class="article_link"
+                    id="link_last_page"
+                    title="last page"
+                >&gt;&gt;</a>
             </body>
         </html>
     }.into();

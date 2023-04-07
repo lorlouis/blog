@@ -5,9 +5,30 @@ use proc_macro::*;
 use std::iter::Peekable;
 
 fn parse_closure(items: &Group, out_string: &mut String) {
-    out_string.push_str("Node::Fn(Box::new(move || ");
-    out_string.push_str(&items.to_string());
-    out_string.push_str(")),");
+    let mut is_move = false;
+    let mut group = items.stream().into_iter().peekable();
+
+    if let Some(TokenTree::Group(g)) = group.peek() {
+        if let Delimiter::Bracket = g.delimiter() {
+            if g.to_string() == "[move]" {
+                is_move = true;
+                // consume [move]
+                group.next();
+            }
+        }
+    }
+
+    if is_move {
+        out_string.push_str("Node::Fn(Box::new(move || {");
+    } else {
+        out_string.push_str("Node::Fn(Box::new(|| {");
+    }
+
+    for token in group {
+        out_string.push_str(&token.to_string());
+    }
+
+    out_string.push_str("} )),");
 }
 
 fn parse_tag(stream: &mut Peekable<impl Iterator<Item=TokenTree>>, out_string: &mut String) {
@@ -25,9 +46,9 @@ fn parse_tag(stream: &mut Peekable<impl Iterator<Item=TokenTree>>, out_string: &
                 }
             },
             TokenTree::Group(g) if let Delimiter::Brace = g.delimiter() => {
-                out_string.push_str("\"\"#),");
+                out_string.push_str("\"#),");
                 parse_closure(g, out_string);
-                out_string.push_str("Node::Str(r#\"\"");
+                out_string.push_str("Node::Str(r#\"");
             },
             _ => {
                 if last_token_was_punct {

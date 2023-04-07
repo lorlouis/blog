@@ -9,8 +9,22 @@
 }
 
 #header_top_div {
-
     background-color: var(--palette-dark);
+}
+
+#page_link_div {
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    padding: 1ch;
+}
+
+#article_container {
+    height: 30ch;
+}
+
+.article_link {
+    display: inline-block;
 }
 
 h3.list_element {

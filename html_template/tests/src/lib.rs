@@ -17,7 +17,7 @@ mod tests {
     #[test]
     fn nested_closure() {
         let dom: Root = html!{
-            { (0..3).map(|v| html!({format!("{}, ", v)})).collect() }
+            { (0..3).map(|v| html!({[move] format!("{}, ", v)})).collect() }
         }.into();
         let expected = "0, 1, 2, ";
 
@@ -53,7 +53,7 @@ mod tests {
     fn html_properties() {
         let value = "value";
         let dom: Root = html!{
-            <base href="http://127.0.0.1:8080/" target={value.to_string()}>
+            <base href="http://127.0.0.1:8080/" target={format!("\"{}\"", value)}>
         }.into();
         let expected = r#"<base href="http://127.0.0.1:8080/" target="value">"#;
 
