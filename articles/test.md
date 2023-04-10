@@ -1,5 +1,6 @@
 ---
 Author: Louis
+Blurb: hello
 ---
 # this is an article wowo
 

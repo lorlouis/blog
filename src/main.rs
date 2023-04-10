@@ -186,15 +186,16 @@ async fn articles<'a>(info: web::Query<Page>) -> impl Responder + 'a {
                 <h1>Articles</h1>
                 <div
                     id="article_container"
-                    style={format!("\"height:{}ch;\"", ARTICLES_PER_PAGE * 3)}
+                    style={format!("\"min-height:{}ch;\"", ARTICLES_PER_PAGE * 3)}
                 >
                 {
                     trimmed_articles.iter()
                         .map(|(date, name, data)| {
                             let title = data.get("Title")
                                 .unwrap_or(name);
+                            let blurb = data.get("Blurb");
                             html! {
-                            <div>
+                            <article>
                                 <h3 class="list_element">
                                     {[move] format!("{}", date) }
                                 </h3>
@@ -203,7 +204,12 @@ async fn articles<'a>(info: web::Query<Page>) -> impl Responder + 'a {
                                         {[move] format!("{}", title)}
                                     </a>
                                 </h3>
-                            </div>
+                                {[move] blurb.iter().map(|v| html!{
+                                    <blockquote id="blurb">
+                                    {v.to_string()}
+                                    </blockquote>
+                                }).collect()}
+                            </article>
                         }
                     }).collect()
                 }

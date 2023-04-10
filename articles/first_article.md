@@ -1,10 +1,10 @@
 ---
-Title: This is an article
+Title: Text is the universal interface?
 Author: Louis
 Date: 2023-04-03
-Blurb: This is a small description of this article
+Blurb: What even is text
 ---
-# Text is the universal interface
+# Text is the universal interface?
 
 > *This is the Unix philosophy. Write programs that do one thing and do it well.*
 >
