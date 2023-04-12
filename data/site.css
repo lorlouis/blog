@@ -21,6 +21,7 @@
     display: flex;
     flex-wrap: nowrap;
     justify-content: space-between;
+    min-height: 4ch;
     padding: 1ch;
     background-color: var(--palette-dark);
 }
@@ -29,6 +30,10 @@
     font-size: x-small;
     text-align: center;
     color: gray;
+}
+
+main {
+    min-height: 80ch;
 }
 
 .article_link {
@@ -63,7 +68,7 @@ th {
 
 body {
     background-color: var(--palette-darkest);
-    max-width: 80ch;
+    width: 80ch;
     margin-left: auto;
     margin-right: auto;
     color: var(--palette-lightest);

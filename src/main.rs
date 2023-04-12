@@ -13,12 +13,33 @@ use std::io::BufReader;
 
 use time::OffsetDateTime;
 
-const BASE_ARTICLE_PATH: &str = "./articles/";
+use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
+
+mod config {
+    pub const FS_ARTICLES_PATH: &str = "./articles";
+    pub const FS_DATA_PATH: &str = "./data";
+    pub const FS_MEDIA_PATH: &str = "./media";
+
+    pub const IP_BIND: &str = "0.0.0.0";
+
+    pub const HTTP_PORT: u16 = 8080;
+
+    pub const HTTPS_PORT: u16 = 4430;
+
+    pub const PRIVATE_KEY_FILE: &str = "key.pem";
+
+    pub const CERTIFICATE_CHAIN_FILE: &str = "cert.pem";
+
+
+    #[allow(clippy::assertions_on_constants)]
+    const _: () = assert!(HTTP_PORT != HTTPS_PORT, "cannot use the same port for http and https");
+}
+
 
 #[derive(Deserialize)]
 struct Page {
     #[serde(default)]
-    pub p: u32,
+    pub p: usize,
 }
 
 async fn page_404() -> HttpResponse {
@@ -75,13 +96,20 @@ fn common_header() -> String {
     }.to_string()
 }
 
-fn common_footer() -> String {
+fn copyright() -> String {
     let now = OffsetDateTime::now_utc();
     let year = now.year();
     html! {
         <p id="copyright">
         {[move] format!("copyright Louis Sven Goulet 2023-{}", year)}
         </p>
+    }.to_string()
+}
+
+fn common_footer() -> String {
+    html! {
+        <div id="page_link_div"></div>
+        { copyright() }
     }.to_string()
 }
 
@@ -113,9 +141,9 @@ async fn index() -> impl Responder {
                 <header>
                 { common_header() }
                 </header>
-
+                <main>
                 <h1>"Hello world"</h1>
-
+                </main>
             </body>
             <footer>
             { common_footer() }
@@ -134,7 +162,7 @@ async fn articles<'a>(info: web::Query<Page>) -> impl Responder + 'a {
 
     let page = info.0.p;
 
-    let mut dir = yeet_500!(read_dir("articles").await);
+    let mut dir = yeet_500!(read_dir(config::FS_ARTICLES_PATH).await);
     let mut articles = Vec::new();
     loop {
         // ugly but I can't flatten due to the await
@@ -165,7 +193,7 @@ async fn articles<'a>(info: web::Query<Page>) -> impl Responder + 'a {
     }
 
     let last_page = (articles.len() / ARTICLES_PER_PAGE).saturating_sub(1);
-    let cur_page = last_page.min(page as usize);
+    let cur_page = last_page.min(page);
 
     articles.sort_unstable_by(|s, o| s.0.cmp(&o.0));
 
@@ -182,12 +210,9 @@ async fn articles<'a>(info: web::Query<Page>) -> impl Responder + 'a {
             </head>
             <body>
                 { common_header() }
-
+                <main>
                 <h1>Articles</h1>
-                <div
-                    id="article_container"
-                    style={format!("\"min-height:{}ch;\"", ARTICLES_PER_PAGE * 3)}
-                >
+                <div id="article_container" >
                 {
                     trimmed_articles.iter()
                         .map(|(date, name, data)| {
@@ -214,6 +239,7 @@ async fn articles<'a>(info: web::Query<Page>) -> impl Responder + 'a {
                     }).collect()
                 }
                 </div>
+                </main>
                 <div id="page_link_div">
                 <a
                     href="/articles"
@@ -241,7 +267,7 @@ async fn articles<'a>(info: web::Query<Page>) -> impl Responder + 'a {
                 >&gt;&gt;</a>
                 </div>
                 <footer>
-                { common_footer() }
+                { copyright() }
                 </footer>
             </body>
         </html>
@@ -256,7 +282,7 @@ async fn articles<'a>(info: web::Query<Page>) -> impl Responder + 'a {
 async fn article<'a>(title: web::Path<String>) -> impl Responder + 'a {
 
     let title = title.into_inner();
-    let mut md_path = PathBuf::from(BASE_ARTICLE_PATH);
+    let mut md_path = PathBuf::from(config::FS_ARTICLES_PATH);
     md_path.push(&title);
 
     let file = yeet_404!(File::open(md_path));
@@ -277,7 +303,9 @@ async fn article<'a>(title: web::Path<String>) -> impl Responder + 'a {
                 <header>
                 { common_header() }
                 </header>
+                <main>
                 { markdown.to_html() }
+                </main>
                 <footer>
                 { common_footer() }
                 </footer>
@@ -290,19 +318,35 @@ async fn article<'a>(title: web::Path<String>) -> impl Responder + 'a {
         .body(body.to_string())
 }
 
-
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    HttpServer::new(|| {
+    // load TLS keys
+    // to create a self-signed temporary cert for testing:
+    // `openssl req -x509 -newkey rsa:4096 -nodes -keyout key.pem -out cert.pem -days 365 -subj '/CN=localhost'`
+    let mut builder = SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
+    builder
+        .set_private_key_file(config::PRIVATE_KEY_FILE, SslFiletype::PEM)
+        .unwrap();
+    builder.set_certificate_chain_file(config::CERTIFICATE_CHAIN_FILE).unwrap();
+
+    let new_website = ||
         App::new()
             .service(index)
             .service(article)
             .service(articles)
-            .service(actix_files::Files::new("/media", "./media").prefer_utf8(true))
-            .service(actix_files::Files::new("/data", "./data").prefer_utf8(true))
-            .default_service(web::to(page_404))
-    })
-    .bind(("0.0.0.0", 8080))?
-    .run()
-    .await
+            .service(actix_files::Files::new("/media", config::FS_MEDIA_PATH).prefer_utf8(true))
+            .service(actix_files::Files::new("/data", config::FS_DATA_PATH).prefer_utf8(true))
+            .default_service(web::to(page_404));
+
+    futures::try_join!(
+        // https
+        HttpServer::new(new_website)
+        .bind_openssl(format!("{}:{}", config::IP_BIND, config::HTTPS_PORT), builder)?
+        .run(),
+        // http
+        HttpServer::new(new_website)
+        .bind((config::IP_BIND, config::HTTP_PORT))?
+        .run(),
+    )?;
+    Ok(())
 }
