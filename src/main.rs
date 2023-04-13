@@ -26,9 +26,9 @@ mod config {
 
     pub const HTTPS_PORT: u16 = 4430;
 
-    pub const PRIVATE_KEY_FILE: &str = "key.pem";
+    pub const PRIVATE_KEY_FILEPATH: &str = "key.pem";
 
-    pub const CERTIFICATE_CHAIN_FILE: &str = "cert.pem";
+    pub const CERTIFICATE_CHAIN_FILEPATH: &str = "cert.pem";
 
 
     #[allow(clippy::assertions_on_constants)]
@@ -142,7 +142,7 @@ async fn index() -> impl Responder {
                 { common_header() }
                 </header>
                 <main>
-                <h1>"Hello world"</h1>
+                <h1>"Louis' imperfect blog"</h1>
                 </main>
             </body>
             <footer>
@@ -325,9 +325,9 @@ async fn main() -> std::io::Result<()> {
     // `openssl req -x509 -newkey rsa:4096 -nodes -keyout key.pem -out cert.pem -days 365 -subj '/CN=localhost'`
     let mut builder = SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
     builder
-        .set_private_key_file(config::PRIVATE_KEY_FILE, SslFiletype::PEM)
+        .set_private_key_file(config::PRIVATE_KEY_FILEPATH, SslFiletype::PEM)
         .unwrap();
-    builder.set_certificate_chain_file(config::CERTIFICATE_CHAIN_FILE).unwrap();
+    builder.set_certificate_chain_file(config::CERTIFICATE_CHAIN_FILEPATH).unwrap();
 
     let new_website = ||
         App::new()
