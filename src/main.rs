@@ -1,6 +1,6 @@
 mod md_ex;
 
-use actix_web::{get, web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{get, web, App, HttpResponse, HttpServer, Responder, dev::Service};
 use serde::Deserialize;
 
 use html_template_core::Root;
@@ -30,7 +30,6 @@ mod config {
 
     pub const CERTIFICATE_CHAIN_FILEPATH: &str = "cert.pem";
 
-
     #[allow(clippy::assertions_on_constants)]
     const _: () = assert!(HTTP_PORT != HTTPS_PORT, "cannot use the same port for http and https");
 }
@@ -46,8 +45,19 @@ async fn page_404() -> HttpResponse {
     let body: Root = html!{
         <!DOCTYPE html>
         <html>
+            <head>
+            { common_head("Page not found".to_string(), None, None)}
+            </head>
             <body>
+                <header>
+                { common_header() }
+                </header>
+                <main>
                 <h1>"Page not found"</h1>
+                </main>
+                <footer>
+                { common_footer() }
+                </footer>
             </body>
         </html>
     }.into();
@@ -61,12 +71,23 @@ fn page_500(e: impl std::error::Error) -> HttpResponse {
     let body: Root = html!{
         <!DOCTYPE html>
         <html>
+            <head>
+            { common_head("Page not found".to_string(), None, None)}
+            </head>
             <body>
+                <header>
+                { common_header() }
+                </header>
+                <main>
                 <h1>{ format!("Internal error: {}", error) }</h1>
+                </main>
+                <footer>
+                { common_footer() }
+                </footer>
             </body>
         </html>
     }.into();
-    HttpResponse::InternalServerError()
+    HttpResponse::NotFound()
         .content_type(mime::TEXT_HTML)
         .body(body.to_string())
 }
@@ -116,6 +137,13 @@ fn common_footer() -> String {
 fn common_head(title: String, author: Option<String>, blurb: Option<String>) -> String {
     let author = author.unwrap_or_else(|| "Louis Sven Goulet".to_string());
     html! {
+        <base href="/" >
+        <link rel="stylesheet" href="data/site.css">
+        <link rel="apple-touch-icon" sizes="180x180" href="/data/favicon_io/apple-touch-icon.png">
+        <link rel="icon" type="image/png" sizes="32x32" href="/data/favicon_io/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/data/favicon_io/favicon-16x16.png">
+        <link rel="manifest" href="/data/favicon_io/site.webmanifest">
+
         <title>{title.clone()}</title>
         <meta charset="UTF-8">
         {
@@ -123,9 +151,7 @@ fn common_head(title: String, author: Option<String>, blurb: Option<String>) -> 
                 <meta name="description" content={[move] format!("\"{}\"", v)}>
             }).collect()
         }
-        <base href="/" >
         <meta name="author" content={[move] format!("\"{}\"", author)}>
-        <link rel="stylesheet" href="data/site.css">
     }.to_string()
 }
 
@@ -135,7 +161,7 @@ async fn index() -> impl Responder {
         <!DOCTYPE html>
         <html>
             <head>
-            { common_head("LSG".to_string(), None, None)}
+            { common_head("Louis' imperfect blog".to_string(), None, None)}
             </head>
             <body>
                 <header>
@@ -181,7 +207,7 @@ async fn articles<'a>(info: web::Query<Page>) -> impl Responder + 'a {
                     Ok(v) => v,
                     Err(e) => {
                         // ignore the error
-                        eprintln!("ran into an error: {e:?} for file: {}", entry.path().display());
+                        log::error!("Ran into error:{e:?}; for file: '{}'", entry.path().display());
                         continue
                     }
                 };
@@ -319,7 +345,13 @@ async fn article<'a>(title: web::Path<String>) -> impl Responder + 'a {
 }
 
 #[actix_web::main]
-async fn main() -> std::io::Result<()> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // configure logging
+    env_logger::init_from_env(
+        env_logger::Env::default().default_filter_or("info")
+    );
+
+
     // load TLS keys
     // to create a self-signed temporary cert for testing:
     // `openssl req -x509 -newkey rsa:4096 -nodes -keyout key.pem -out cert.pem -days 365 -subj '/CN=localhost'`
@@ -331,6 +363,21 @@ async fn main() -> std::io::Result<()> {
 
     let new_website = ||
         App::new()
+            .wrap_fn(|req, srv| {
+                let connection_info = req.connection_info().clone();
+                let target: String = req.uri().to_string().escape_debug().collect();
+                let remote_addr = connection_info.realip_remote_addr()
+                    .map(|v| v.escape_debug().collect())
+                    .unwrap_or_else(|| "UNKNOWN".to_string());
+                let agent = req.headers()
+                    .get("User-Agent")
+                    .map(|v| String::from_utf8_lossy(v.as_bytes()))
+                    .map(|v| v.escape_debug().collect())
+                    .unwrap_or("UNKNOWN".to_string());
+
+                log::info!("Connection from: '{}'; With agent: '{}'; For target: '{}'", remote_addr, agent, target);
+                srv.call(req)
+            })
             .service(index)
             .service(article)
             .service(articles)
