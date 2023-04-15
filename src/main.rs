@@ -26,9 +26,11 @@ mod config {
 
     pub const HTTPS_PORT: u16 = 4430;
 
-    pub const PRIVATE_KEY_FILEPATH: &str = "key.pem";
+    pub const PRIVATE_KEY_FILEPATH: &str = "./key.pem";
 
-    pub const CERTIFICATE_CHAIN_FILEPATH: &str = "cert.pem";
+    pub const CERTIFICATE_CHAIN_FILEPATH: &str = "./cert.pem";
+
+    pub const INDEX_MD_FILEPATH: &str = "./data/index.md";
 
     #[allow(clippy::assertions_on_constants)]
     const _: () = assert!(HTTP_PORT != HTTPS_PORT, "cannot use the same port for http and https");
@@ -157,6 +159,11 @@ fn common_head(title: String, author: Option<String>, blurb: Option<String>) -> 
 
 #[get("/")]
 async fn index() -> impl Responder {
+
+    let index_file = yeet_500!(File::open(config::INDEX_MD_FILEPATH));
+
+    let markdown = yeet_500!(md_ex::ExtendedMd::from_bufread(BufReader::new(index_file)));
+
     let body: Root = html!{
         <!DOCTYPE html>
         <html>
@@ -168,7 +175,7 @@ async fn index() -> impl Responder {
                 { common_header() }
                 </header>
                 <main>
-                <h1>"Louis' imperfect blog"</h1>
+                { markdown.to_html() }
                 </main>
             </body>
             <footer>

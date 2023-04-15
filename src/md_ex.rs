@@ -31,6 +31,20 @@ pub enum HeaderError {
     IO(io::Error)
 }
 
+impl std::fmt::Display for HeaderError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            HeaderError::NoValue { key } => {
+                f.write_str(&format!("No value associated with key '{}'", key))
+            },
+            HeaderError::IO(e) => e.fmt(f),
+        }
+    }
+}
+
+impl std::error::Error for HeaderError { }
+
+
 impl From<io::Error> for HeaderError {
     fn from(e: io::Error) -> Self {
         HeaderError::IO(e)
