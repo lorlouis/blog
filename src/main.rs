@@ -15,25 +15,81 @@ use time::OffsetDateTime;
 
 use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
 
+
 mod config {
-    pub const FS_ARTICLES_PATH: &str = "./articles";
-    pub const FS_DATA_PATH: &str = "./data";
-    pub const FS_MEDIA_PATH: &str = "./media";
+    use lazy_static::lazy_static;
+    use std::env::vars;
 
-    pub const IP_BIND: &str = "0.0.0.0";
+    lazy_static! {
+        pub static ref FS_DATA_PATH: String = {
+            vars().find(|(k, _v)| k == "FS_DATA_PATH")
+                .map(|(_key, value)| value)
+                .unwrap_or_else(|| "./data".to_string())
+        };
 
-    pub const HTTP_PORT: u16 = 80;
+        pub static ref FS_MEDIA_PATH: String = {
+            vars().find(|(k, _v)| k == "FS_MEDIA_PATH")
+                .map(|(_key, value)| value)
+                .unwrap_or_else(|| "./media".to_string())
+        };
 
-    pub const HTTPS_PORT: u16 = 443;
+        pub static ref FS_ARTICLES_PATH: String = {
+            vars().find(|(k, _v)| k == "FS_ARTICLES_PATH")
+                .map(|(_key, value)| value)
+                .unwrap_or_else(|| "./articles".to_string())
+        };
 
-    pub const PRIVATE_KEY_FILEPATH: &str = "/etc/letsencrypt/live/louissven.xyz/privkey.pem";
+        pub static ref IP_BIND: String = {
+            vars().find(|(k, _v)| k == "IP_BIND")
+                .map(|(_key, value)| value)
+                .unwrap_or_else(|| "0.0.0.0".to_string())
+        };
 
-    pub const CERTIFICATE_CHAIN_FILEPATH: &str = "/etc/letsencrypt/live/louissven.xyz/fullchain.pem";
+        pub static ref HTTP_PORT: u16 = {
+            vars().find(|(k, _v)| k == "HTTP_PORT")
+                .map(|(_key, value)| value.parse().expect("invalid HTTP_PORT value"))
+                .unwrap_or(80)
+        };
 
-    pub const INDEX_MD_FILEPATH: &str = "./data/index.md";
+        pub static ref HTTPS_PORT: u16 = {
+            vars().find(|(k, _v)| k == "HTTPS_PORT")
+                .map(|(_key, value)| value.parse().expect("invalid HTTPS_PORT value"))
+                .unwrap_or(443)
+        };
 
-    #[allow(clippy::assertions_on_constants)]
-    const _: () = assert!(HTTP_PORT != HTTPS_PORT, "cannot use the same port for http and https");
+        pub static ref PRIVATE_KEY_FILEPATH: Option<String> = {
+            vars().find(|(k, _v)| k == "PRIVATE_KEY_FILEPATH")
+                .map(|(_key, value)| value)
+                .or_else(|| {
+                    log::warn!("No 'PRIVATE_KEY_FILEPATH' found in env, defaulting to http");
+                    None
+                })
+        };
+
+        pub static ref CERTIFICATE_CHAIN_FILEPATH: Option<String> = {
+            vars().find(|(k, _v)| k == "CERTIFICATE_CHAIN_FILEPATH")
+                .map(|(_key, value)| value)
+                .or_else(|| {
+                    log::warn!("No 'CERTIFICATE_CHAIN_FILEPATH' found in env, defaulting to http");
+                    None
+                })
+        };
+
+        //pub static ref PRIVATE_KEY_FILEPATH: Option<String> = "/etc/letsencrypt/live/louissven.xyz/privkey.pem";
+
+        //pub static ref CERTIFICATE_CHAIN_FILEPATH: &'static str = "/etc/letsencrypt/live/louissven.xyz/fullchain.pem";
+
+        pub static ref INDEX_MD_FILEPATH: String = {
+            vars().find(|(k, _v)| k == "INDEX_MD_FILEPATH")
+                .map(|(_key, value)| value)
+                .unwrap_or_else(|| "./data/index.md".to_string())
+        };
+
+        #[allow(clippy::assertions_on_constants)]
+        static ref _ASSERT: () = assert!(*HTTP_PORT != *HTTPS_PORT, "cannot use the same port for http and https");
+
+    }
+
 }
 
 
@@ -161,7 +217,7 @@ fn common_head(title: String, author: Option<String>, blurb: Option<String>) -> 
 #[get("/")]
 async fn index() -> impl Responder {
 
-    let index_file = yeet_500!(File::open(config::INDEX_MD_FILEPATH));
+    let index_file = yeet_500!(File::open(config::INDEX_MD_FILEPATH.as_str()));
 
     let markdown = yeet_500!(md_ex::ExtendedMd::from_bufread(BufReader::new(index_file)));
 
@@ -196,7 +252,7 @@ async fn articles<'a>(info: web::Query<Page>) -> impl Responder + 'a {
 
     let page = info.0.p;
 
-    let mut dir = yeet_500!(read_dir(config::FS_ARTICLES_PATH).await);
+    let mut dir = yeet_500!(read_dir(config::FS_ARTICLES_PATH.as_str()).await);
     let mut articles = Vec::new();
     loop {
         // ugly but I can't flatten due to the await
@@ -316,7 +372,7 @@ async fn articles<'a>(info: web::Query<Page>) -> impl Responder + 'a {
 async fn article<'a>(title: web::Path<String>) -> impl Responder + 'a {
 
     let title = title.into_inner();
-    let mut md_path = PathBuf::from(config::FS_ARTICLES_PATH);
+    let mut md_path = PathBuf::from(config::FS_ARTICLES_PATH.as_str());
     md_path.push(&title);
 
     let file = yeet_404!(File::open(md_path));
@@ -359,16 +415,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         env_logger::Env::default().default_filter_or("info")
     );
 
-
-    // load TLS keys
-    // to create a self-signed temporary cert for testing:
-    // `openssl req -x509 -newkey rsa:4096 -nodes -keyout key.pem -out cert.pem -days 365 -subj '/CN=localhost'`
-    let mut builder = SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
-    builder
-        .set_private_key_file(config::PRIVATE_KEY_FILEPATH, SslFiletype::PEM)
-        .unwrap();
-    builder.set_certificate_chain_file(config::CERTIFICATE_CHAIN_FILEPATH).unwrap();
-
     let new_website = ||
         App::new()
             .wrap_fn(|req, srv| {
@@ -389,19 +435,44 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .service(index)
             .service(article)
             .service(articles)
-            .service(actix_files::Files::new("/media", config::FS_MEDIA_PATH).prefer_utf8(true))
-            .service(actix_files::Files::new("/data", config::FS_DATA_PATH).prefer_utf8(true))
+            .service(actix_files::Files::new("/media", config::FS_MEDIA_PATH.as_str()).prefer_utf8(true))
+            .service(actix_files::Files::new("/data", config::FS_DATA_PATH.as_str()).prefer_utf8(true))
             .default_service(web::to(page_404));
 
-    futures::try_join!(
-        // https
+    if let (Some(private_key), Some(cert)) = (
+            config::PRIVATE_KEY_FILEPATH.as_deref(),
+            config::CERTIFICATE_CHAIN_FILEPATH.as_deref()) {
+        // load TLS keys
+        // to create a self-signed temporary cert for testing:
+        // `openssl req -x509 -newkey rsa:4096 -nodes -keyout key.pem -out cert.pem -days 365 -subj '/CN=localhost'`
+        let mut builder = SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
+        builder
+            .set_private_key_file(private_key, SslFiletype::PEM)
+            .unwrap();
+        builder.set_certificate_chain_file(cert).unwrap();
+
+
+        futures::try_join!(
+            // https
+            HttpServer::new(new_website)
+            .bind_openssl(format!("{}:{}", config::IP_BIND.as_str(), *config::HTTPS_PORT), builder)
+            .map_err(|e| format!("unable to bind on https port: {} error: {}", *config::HTTPS_PORT, e))?
+            .run(),
+
+            // http
+            HttpServer::new(new_website)
+            .bind((config::IP_BIND.as_str(), *config::HTTP_PORT))
+            .map_err(|e| format!("unable to bind on http port: {} error: {}", *config::HTTP_PORT, e))?
+            .run(),
+        )?;
+    }
+    else {
+        // http only
         HttpServer::new(new_website)
-        .bind_openssl(format!("{}:{}", config::IP_BIND, config::HTTPS_PORT), builder)?
-        .run(),
-        // http
-        HttpServer::new(new_website)
-        .bind((config::IP_BIND, config::HTTP_PORT))?
-        .run(),
-    )?;
+        .bind((config::IP_BIND.as_str(), *config::HTTP_PORT))
+        .map_err(|e| format!("unable to bind on http port: {} error: {}", *config::HTTP_PORT, e))?
+        .run().await?;
+    }
+
     Ok(())
 }

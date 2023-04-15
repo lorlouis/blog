@@ -28,3 +28,4 @@ openssl = { version = "0.10", features = ["v110"] }
 futures = { version = "0.3" }
 log = { version = "0.4" }
 env_logger = { version = "0.10" }
+lazy_static = { version = "1.4" }
