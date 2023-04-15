@@ -141,6 +141,7 @@ fn common_head(title: String, author: Option<String>, blurb: Option<String>) -> 
     html! {
         <base href="/" >
         <link rel="stylesheet" href="data/site.css">
+        <meta name="viewport" content="width=device-width">
         <link rel="apple-touch-icon" sizes="180x180" href="/data/favicon_io/apple-touch-icon.png">
         <link rel="icon" type="image/png" sizes="32x32" href="/data/favicon_io/favicon-32x32.png">
         <link rel="icon" type="image/png" sizes="16x16" href="/data/favicon_io/favicon-16x16.png">
