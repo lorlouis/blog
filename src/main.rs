@@ -22,13 +22,13 @@ mod config {
 
     pub const IP_BIND: &str = "0.0.0.0";
 
-    pub const HTTP_PORT: u16 = 8080;
+    pub const HTTP_PORT: u16 = 80;
 
-    pub const HTTPS_PORT: u16 = 4430;
+    pub const HTTPS_PORT: u16 = 443;
 
-    pub const PRIVATE_KEY_FILEPATH: &str = "./key.pem";
+    pub const PRIVATE_KEY_FILEPATH: &str = "/etc/letsencrypt/live/louissven.xyz/privkey.pem";
 
-    pub const CERTIFICATE_CHAIN_FILEPATH: &str = "./cert.pem";
+    pub const CERTIFICATE_CHAIN_FILEPATH: &str = "/etc/letsencrypt/live/louissven.xyz/fullchain.pem";
 
     pub const INDEX_MD_FILEPATH: &str = "./data/index.md";
 
