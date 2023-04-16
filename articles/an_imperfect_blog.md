@@ -9,8 +9,8 @@ Blurb: for the sake of getting it out-there
 I have trouble finishing projects, my `Projects/` directory is filled
 with half finished parsers, barely working game engines, 3 slightly different
 versions of a web server and more than a dozen other side projects I started
-but never finished. This blog is no exception, I started thinking about having
-my own website 2 years ago and in the meantime the only I build towards that
+but never finished. This blog is no exception, I started considering having
+my own website 2 years ago and in the meantime, the only I build towards that
 goal are:
 
 1. A web server written in C that I gave up while trying to handle multiple
@@ -18,7 +18,7 @@ goal are:
 2. A few CGI scripts to learn how CGI works
 3. And a barely functioning templating system built around the C preprocessor
 
-As you can see I made zero progress on **actually** writing a blog. I thought
+As you can see, I made zero progress on **actually** writing a blog. I thought
 about it and decided I should start finishing projects more often.
 
 
@@ -38,9 +38,9 @@ to another project   on the subject
 ```
 Whenever I start a new project, I tend to try to build what I consider the
 "hardest" part first. This means that when I build a 2.5D "engine" *à la*
-Wolfenstein I only wrote the bare minimum to be able to write the code to render
+Wolfenstein, I only wrote the bare minimum to be able to write the code to render
 a maze. This meant that I learned a lot about how to write a raycaster and I even
-got it to be able to "pan" the camera up and down, but once I got that working
+got it to be able to "pan" the camera up and down. But once I got that working,
 I completely lost interest and started a new project to learn about some other
 concept I thought was interesting at the time.
 
@@ -56,8 +56,8 @@ after having written, it makes me ashamed.
 
 ## Getting myself to finish *something*
 
-I don't want to push myself to finish every project I start, otherwise I'll end
+I don't want to push myself to finish every project I start; otherwise I'll end
 up not starting any new projects. I think I should prioritise certain projects,
 such as this blog, and get them released.
 
-I you can read this, it means I managed to get something imperfect out the door.
+If you can read this, it means I managed to get something imperfect out the door.
