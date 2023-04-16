@@ -9,7 +9,8 @@ use html_template_macros::html;
 use std::fs::File;
 use std::path::PathBuf;
 use tokio::fs::read_dir;
-use std::io::BufReader;
+use std::io::{self, BufReader};
+use std::collections::BTreeMap;
 
 use time::OffsetDateTime;
 
@@ -75,10 +76,6 @@ mod config {
                 })
         };
 
-        //pub static ref PRIVATE_KEY_FILEPATH: Option<String> = "/etc/letsencrypt/live/louissven.xyz/privkey.pem";
-
-        //pub static ref CERTIFICATE_CHAIN_FILEPATH: &'static str = "/etc/letsencrypt/live/louissven.xyz/fullchain.pem";
-
         pub static ref INDEX_MD_FILEPATH: String = {
             vars().find(|(k, _v)| k == "INDEX_MD_FILEPATH")
                 .map(|(_key, value)| value)
@@ -137,7 +134,8 @@ fn page_500(e: impl std::error::Error) -> HttpResponse {
                 { common_header() }
                 </header>
                 <main>
-                <h1>{ format!("Internal error: {}", error) }</h1>
+                <h1>"Internal server error"</h1>
+                <pre><code>{ error.to_string() }</code></pre>
                 </main>
                 <footer>
                 { common_footer() }
@@ -170,6 +168,7 @@ fn common_header() -> String {
         <div id="header_top_div">
             <a href="/" class="header_element">home</a>
             <a href="/articles" class="header_element">articles</a>
+            <a href="/data-policy" class="header_element">"data policy"</a>
             <a href="https://github.com/lorlouis" class="header_element">github</a>
         </div>
     }.to_string()
@@ -214,18 +213,17 @@ fn common_head(title: String, author: Option<String>, blurb: Option<String>) -> 
     }.to_string()
 }
 
-#[get("/")]
-async fn index() -> impl Responder {
 
-    let index_file = yeet_500!(File::open(config::INDEX_MD_FILEPATH.as_str()));
+async fn basic_md_page(path: &str) -> impl Responder {
+    let md_file = yeet_500!(File::open(path));
 
-    let markdown = yeet_500!(md_ex::ExtendedMd::from_bufread(BufReader::new(index_file)));
-
+    let markdown = yeet_500!(md_ex::ExtendedMd::from_bufread(BufReader::new(md_file)));
+    let title = markdown.header.get("Title").cloned().unwrap_or_default();
     let body: Root = html!{
         <!DOCTYPE html>
         <html>
             <head>
-            { common_head("Louis' imperfect blog".to_string(), None, None)}
+            { common_head(title.to_string(), None, None)}
             </head>
             <body>
                 <header>
@@ -245,28 +243,96 @@ async fn index() -> impl Responder {
         .body(body.to_string())
 }
 
+#[get("/")]
+async fn index() -> impl Responder {
+    let index_file = yeet_500!(File::open(config::INDEX_MD_FILEPATH.as_str()));
 
-#[get("/articles")]
-async fn articles<'a>(info: web::Query<Page>) -> impl Responder + 'a {
-    const ARTICLES_PER_PAGE: usize = 15;
+    let markdown = yeet_500!(md_ex::ExtendedMd::from_bufread(BufReader::new(index_file)));
 
-    let page = info.0.p;
+    let posts = yeet_500!(get_articles().await);
 
-    let mut dir = yeet_500!(read_dir(config::FS_ARTICLES_PATH.as_str()).await);
-    let mut articles = Vec::new();
+    let posts_ref = posts.as_slice();
+
+    let body: Root = html!{
+        <!DOCTYPE html>
+        <html>
+            <head>
+            { common_head("Louis' imperfect blog".to_string(), None, None)}
+            </head>
+            <body>
+                <header>
+                { common_header() }
+                </header>
+                <main>
+                { markdown.to_html() }
+                <h3>"Recent Articles"</h2>
+                { build_articles_html_list(posts_ref, 5, 0) }
+                </main>
+            </body>
+            <footer>
+            { common_footer() }
+            </footer>
+        </html>
+    }.into();
+    HttpResponse::Ok()
+        .content_type(mime::TEXT_HTML)
+        .body(body.to_string())
+}
+
+fn build_articles_html_list(posts: &[(String, String, BTreeMap<String, String>)], count: usize, skip: usize) -> String {
+    let trimmed_articles: Vec<_> = posts.iter()
+                        .skip(skip)
+                        .take(count)
+                        .collect();
+    html! {
+        <div id="article_container" >
+        { [move]
+            trimmed_articles.iter()
+                .map(|(date, name, data)| {
+                    let title = data.get("Title")
+                        .unwrap_or(name);
+                    let blurb = data.get("Blurb");
+                    html! {
+                    <article>
+                        <h3 class="list_element">
+                            {[move] format!("{}", date) }
+                        </h3>
+                        <h3 class="list_element">
+                            <a href={[move] format!("\"article/{}\"", name)}>
+                                {[move] format!("{}", title)}
+                            </a>
+                        </h3>
+                        {[move] blurb.iter().map(|v| html!{
+                            <blockquote id="blurb">
+                            {v.to_string()}
+                            </blockquote>
+                        }).collect()}
+                    </article>
+                }
+            }).collect()
+        }
+        </div>
+    }.to_string()
+}
+
+
+async fn get_articles() -> io::Result<Vec<(String, String, BTreeMap<String, String>)>> {
+
+    let mut dir = read_dir(config::FS_ARTICLES_PATH.as_str()).await?;
+    let mut posts = Vec::new();
     loop {
         // ugly but I can't flatten due to the await
         let res = dir.next_entry().await;
-        let entry = match yeet_500!(res) {
+        let entry = match res? {
             Some(v) => v,
             None => break,
         };
 
-        let metadata = yeet_500!(entry.metadata().await);
+        let metadata = entry.metadata().await?;
         if metadata.is_file()
             && entry.file_name().to_string_lossy().to_lowercase().ends_with(".md") {
                 // normal std::fs::File because tokio's async BufReader is really annoying
-                let file = BufReader::new(yeet_500!(File::open(entry.path())));
+                let file = BufReader::new(File::open(entry.path())?);
                 let article_data = match md_ex::ExtendedMd::read_header(file) {
                     Ok(v) => v,
                     Err(e) => {
@@ -278,19 +344,25 @@ async fn articles<'a>(info: web::Query<Page>) -> impl Responder + 'a {
                 let date = article_data.get("Date")
                     .cloned()
                     .unwrap_or_else(|| "31005-12-01".to_string());
-                articles.push((date, entry.file_name().to_string_lossy().to_string(), article_data));
+                posts.push((date, entry.file_name().to_string_lossy().to_string(), article_data));
         }
     }
+    posts.sort_unstable_by(|s, o| s.0.cmp(&o.0));
+    Ok(posts)
+}
 
-    let last_page = (articles.len() / ARTICLES_PER_PAGE).saturating_sub(1);
+#[get("/articles")]
+async fn articles<'a>(info: web::Query<Page>) -> impl Responder + 'a {
+    const ARTICLES_PER_PAGE: usize = 8;
+
+    let page = info.0.p;
+
+    let articles = yeet_500!(get_articles().await);
+
+    let last_page = articles.len() / ARTICLES_PER_PAGE;
     let cur_page = last_page.min(page);
 
-    articles.sort_unstable_by(|s, o| s.0.cmp(&o.0));
-
-    let trimmed_articles: Vec<_> = articles.into_iter()
-                        .skip(cur_page * ARTICLES_PER_PAGE)
-                        .take(ARTICLES_PER_PAGE)
-                        .collect();
+    let articles_ref = articles.as_slice();
 
     let body: Root = html!{
         <!DOCTYPE html>
@@ -302,33 +374,11 @@ async fn articles<'a>(info: web::Query<Page>) -> impl Responder + 'a {
                 { common_header() }
                 <main>
                 <h1>Articles</h1>
-                <div id="article_container" >
-                {
-                    trimmed_articles.iter()
-                        .map(|(date, name, data)| {
-                            let title = data.get("Title")
-                                .unwrap_or(name);
-                            let blurb = data.get("Blurb");
-                            html! {
-                            <article>
-                                <h3 class="list_element">
-                                    {[move] format!("{}", date) }
-                                </h3>
-                                <h3 class="list_element">
-                                    <a href={[move] format!("\"article/{}\"", name)}>
-                                        {[move] format!("{}", title)}
-                                    </a>
-                                </h3>
-                                {[move] blurb.iter().map(|v| html!{
-                                    <blockquote id="blurb">
-                                    {v.to_string()}
-                                    </blockquote>
-                                }).collect()}
-                            </article>
-                        }
-                    }).collect()
+                {[move] build_articles_html_list(
+                            articles_ref,
+                            ARTICLES_PER_PAGE,
+                            ARTICLES_PER_PAGE * cur_page)
                 }
-                </div>
                 </main>
                 <div id="page_link_div">
                 <a
@@ -435,6 +485,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .service(index)
             .service(article)
             .service(articles)
+            .route("/data-policy", web::get().to(|| basic_md_page("./data/data_policy.md")))
             .service(actix_files::Files::new("/media", config::FS_MEDIA_PATH.as_str()).prefer_utf8(true))
             .service(actix_files::Files::new("/data", config::FS_DATA_PATH.as_str()).prefer_utf8(true))
             .default_service(web::to(page_404));

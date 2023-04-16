@@ -5,5 +5,4 @@ Date: 2023-04-15
 ---
 # Louis' imperfect blog
 
-
-This is the landing page of my blog wow
+A place to post my ramblings about programming and stuff.
