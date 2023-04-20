@@ -1,11 +1,20 @@
 :root {
     --white-ish: #f6f1e9;
     /* colour palette */
+    --palette-darkest: #03001c;
+    --palette-dark: #205295;
+    /*--palette-accent: #01b877;*/
+    /*--palette-accent: #519872;*/
+    --palette-accent: #de743f;
+    --palette-light: #d5cea3;
+    --palette-lightest: #e5e5cb;
+    /*
     --palette-darkest: #001414;
     --palette-dark: #12497d;
     --palette-accent: #de743f;
     --palette-light: #b3d0c0;
     --palette-lightest: #fffcf2;
+    */
 }
 
 #blurb {
@@ -19,12 +28,16 @@
 
 #header_top_div a {
     font-size: larger;
+    color: var(--palette-lightest);
 }
 
 #page_link_div {
+    display: flex;
+    flex-wrap: nowrap;
     min-height: 4ch;
     padding: 1ch;
     background-color: var(--palette-dark);
+    justify-content: space-between;
 }
 
 #copyright {
@@ -74,6 +87,7 @@ body {
     color: var(--palette-lightest);
     max-width: 80ch;
     text-size-adjust: auto;
+    color: var(--white-ish);
 }
 
 pre {
