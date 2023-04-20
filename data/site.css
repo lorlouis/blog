@@ -17,10 +17,11 @@
     background-color: var(--palette-dark);
 }
 
+#header_top_div a {
+    font-size: larger;
+}
+
 #page_link_div {
-    display: flex;
-    flex-wrap: nowrap;
-    justify-content: space-between;
     min-height: 4ch;
     padding: 1ch;
     background-color: var(--palette-dark);
@@ -33,7 +34,7 @@
 }
 
 main {
-    min-height: 80ch;
+    min-height: 80vh;
 }
 
 .article_link {
@@ -68,10 +69,11 @@ th {
 
 body {
     background-color: var(--palette-darkest);
-    width: 80ch;
     margin-left: auto;
     margin-right: auto;
     color: var(--palette-lightest);
+    max-width: 80ch;
+    text-size-adjust: auto;
 }
 
 pre {
@@ -79,7 +81,6 @@ pre {
     margin-left: auto;
     margin-right: auto;
     text-align: center;
-    width: 80ch;
 }
 
 code {
