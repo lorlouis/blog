@@ -665,12 +665,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fed44880c466736ef9a5c5b5facefb5ed0785676d0c02d612db14e54f0d84286"
 
 [[package]]
+name = "html_template"
+version = "0.1.0"
+source = "git+https://github.com/lorlouis/html_template?branch=main#09021068fd70a3e5359ef53afc2648e9afba9fc7"
+dependencies = [
+ "html_template_core",
+ "html_template_macros",
+]
+
+[[package]]
 name = "html_template_core"
 version = "0.1.0"
+source = "git+https://github.com/lorlouis/html_template?branch=main#09021068fd70a3e5359ef53afc2648e9afba9fc7"
 
 [[package]]
 name = "html_template_macros"
 version = "0.1.0"
+source = "git+https://github.com/lorlouis/html_template?branch=main#09021068fd70a3e5359ef53afc2648e9afba9fc7"
 dependencies = [
  "html_template_core",
 ]
@@ -1229,14 +1240,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tests"
-version = "0.1.0"
-dependencies = [
- "html_template_core",
- "html_template_macros",
-]
-
-[[package]]
 name = "time"
 version = "0.3.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1422,8 +1425,7 @@ dependencies = [
  "actix-web",
  "env_logger",
  "futures",
- "html_template_core",
- "html_template_macros",
+ "html_template",
  "lazy_static",
  "log",
  "markdown",

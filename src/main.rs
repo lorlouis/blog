@@ -3,8 +3,7 @@ mod md_ex;
 use actix_web::{get, web, App, HttpResponse, HttpServer, Responder, dev::Service};
 use serde::Deserialize;
 
-use html_template_core::Root;
-use html_template_macros::html;
+use html_template::{Root, html};
 
 use std::fs::File;
 use std::path::PathBuf;
