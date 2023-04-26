@@ -346,7 +346,11 @@ async fn get_articles() -> io::Result<Vec<(String, String, BTreeMap<String, Stri
                 posts.push((date, entry.file_name().to_string_lossy().to_string(), article_data));
         }
     }
-    posts.sort_unstable_by(|s, o| s.0.cmp(&o.0));
+    posts.sort_unstable_by(|s, o|
+        s.0.cmp(&o.0)
+        // make the oldest articles appear at the end
+        .reverse()
+    );
     Ok(posts)
 }
 
