@@ -191,7 +191,7 @@ In the end, I built a fairly unsophisticated blog using mostly pre-existing
 libraries. The downside of this approach is that while I was paying attention
 to not pull-in too many dependencies, I now depend on 168 external
 dependencies. Using Actic-web it made routing and handling query parameters
-really easy. I'm also glad I build
+really easy. I'm also glad I built
 [html\_template](https://github.com/lorlouis/html_template) as it was the first
 time I had ever used Rust's proc-macros, and it made building HTML pages
 in-code much easier.
