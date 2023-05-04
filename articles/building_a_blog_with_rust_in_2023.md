@@ -123,7 +123,7 @@ people don't): you can mix HTML and code.
 ### typed-html
 
 When I found [typed-html](https://github.com/bodil/typed-html) it seemed to be
-exactly what I was looking for, I could embed HTML through the `html!` macro
+exactly what I was looking for, I could embed HTML with the `html!` macro
 and I could use rust expressions within that macro to build web pages
 server-side. The first page I build was the </articles> page and I quickly ran
 into a limitation of typed-html, due to typed-html's goal of making it easy to
@@ -188,8 +188,8 @@ let body: Root = html!{
 ## Final Thoughts
 
 In the end, I built a fairly unsophisticated blog using mostly pre-existing
-libraries. The downside to this approach is that while I was paying attention
-to not pulling in too many dependencies, I now depend on 168 external
+libraries. The downside of this approach is that while I was paying attention
+to not pull-in too many dependencies, I now depend on 168 external
 dependencies. Using Actic-web as it made routing and handling query parameters
 really easy. I'm also glad I build
 [html\_template](https://github.com/lorlouis/html_template) as it was the first
