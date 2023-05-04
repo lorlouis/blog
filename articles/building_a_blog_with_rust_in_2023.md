@@ -89,13 +89,13 @@ it felt overkill for my usage.
 
 ### Warp
 
-I was looking for a framework that would be a tad smaller Having used
-[warp](https://docs.rs/warp/latest/warp/) as my `$JOB` before, I briefly
+I was looking for a framework that would be a tad smaller. Having used
+[warp](https://docs.rs/warp/latest/warp/) at my `$JOB` before, I briefly
 considered it. Warp is built on top of Rust Generics and its type system. This
 means that a lot of it feels magic, just add a few filters and some
-`serde::Desericalise` implementing types, and you'll have a working API
+`serde::Deserialize` implementing types, and you'll have a working API
 endpoint in no time... Except that warp, due to its *liberal* use of generics,
-it contributes a lot to the overall time it takes to build our projects. But my
+contributes a lot to the overall time it takes to build our projects. But my
 biggest gripe with warp is that when things go wrong (which is a compile-time,
 at least) it generates compile errors that compete with some of the worse C++
 template errors I've had the displeasure of seeing.
