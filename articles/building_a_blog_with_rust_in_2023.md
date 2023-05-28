@@ -32,7 +32,7 @@ There were a few thing I was not willing to compromise on:
 * No need for docker
 * It should be readable in [Links](http://links.twibright.com/)
 
-## The Options I considered
+## The options I considered
 
 ### Any static site generator build around Markdown
 

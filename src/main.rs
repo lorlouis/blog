@@ -81,6 +81,12 @@ mod config {
                 .unwrap_or_else(|| "./data/index.md".to_string())
         };
 
+        pub static ref RENDER_WIP: bool = {
+            vars().find(|(k, _v)| k == "RENDER_WIP")
+                .map(|(_key, value)| !value.is_empty())
+                .unwrap_or(false)
+        };
+
         #[allow(clippy::assertions_on_constants)]
         static ref _ASSERT: () = assert!(*HTTP_PORT != *HTTPS_PORT, "cannot use the same port for http and https");
 
@@ -328,8 +334,12 @@ async fn get_articles() -> io::Result<Vec<(String, String, BTreeMap<String, Stri
         };
 
         let metadata = entry.metadata().await?;
-        if metadata.is_file()
-            && entry.file_name().to_string_lossy().to_lowercase().ends_with(".md") {
+        let entry_name = entry.file_name().to_string_lossy().to_lowercase();
+
+        let is_markdown = entry_name.ends_with(".md")
+            || (*config::RENDER_WIP && entry_name.ends_with(".md.wip"));
+
+        if metadata.is_file() && is_markdown {
                 // normal std::fs::File because tokio's async BufReader is really annoying
                 let file = BufReader::new(File::open(entry.path())?);
                 let article_data = match md_ex::ExtendedMd::read_header(file) {

@@ -1,0 +1,75 @@
+---
+Title: What even is a bootable CD?
+Author: Louis
+Date: 2023-05-28
+Blurb: Three floppies in a trench coat
+---
+# What even is a bootable CD?
+
+A long weekend was coming up and I wanted a short project to fill the time.
+I was reading an article on UEFI over on <wiki.osdev.org> and then it dawned on
+me, I don't know how a legacy bios boots from a CD. I went down the rabbit
+hole.
+
+
+## How does a legacy BIOS boot?
+
+Historically the IBM PC did not ship with a hard drive, it had a BASIC
+interpreter in it's ROM and up to 2 floppy disk drives. This meant that if you
+wanted a proper operating system the PC had to boot from a floppy containing an
+OS. To differentiate floppies containing regular data and bootable ones, the
+bios looks for the magic numbers `[0x55, 0xAA]` at bytes 511 and 512 of the
+floppy's 0th segment. Once a bootable device is found, it's 0th segment is
+loaded into memory at address `0x7C00` (most of the time) and the CPU starts
+executing whatever is present at that address. When hard drives came along,
+they behaved a lot like floppy drives which meant that the same booting logic
+could be reused.
+
+Not surprising anyone, this booting mechanism is still supported by most modern
+PCs, although some manufacturers have started to remove support for legacy BIOS
+booting in favour of UEFI, but that's a story/rant for another time.
+
+```
+Ok great, my PC boots by looking for special sectors
+present on floppies or hard drives, but when I install
+a Linux distro I burn a Disk image and boot from that.
+How does that work?
+ V
+|\_/|_
+(._.)\\
+/   \//
+||_||/
+```
+
+## What's the deal with ISO files
+
+An ISO file is just a file containing an ISO 9660 file system. The file system
+in itself is not very complex, but most importantly, if you only care about
+finding something that looks like a floppy and boot it, you can ignore most of
+it.
+
+```
+           ISO 9660
+(the bits to boot a PC at least)
+  Offset
+  0x0000_ _____________
+         |    ....     |
+         |  <unused>   |
+         |    ....     |
+  0x8000_|_____________|
+  0x8800_|_primary_vol_|
+         |_boot_record_| --.
+         |    ....     |    |
+         <other volumes>    |  addr
+         |    ....     |    | of boot
+         |_____________|    | catalog
+         |__terminator_|    |
+     .-- |_boot_catalog| <-´
+     `-> |__boot_image_|
+         |    ....     |
+         |<rest of the |
+         | file system>|
+         |    ....     |
+          ¯¯¯¯¯¯¯¯¯¯¯¯¯
+```
+
