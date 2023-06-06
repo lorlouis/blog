@@ -104,7 +104,8 @@ pre {
 pre code {
     margin-left: auto;
     margin-right: auto;
-    font-size: medium;
+    font-size: larger;
+    font-weight: bold;
     text-align: left;
     padding: 1ch;
     max-width: 80ch;
