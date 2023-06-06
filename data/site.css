@@ -17,6 +17,10 @@
     */
 }
 
+* {
+    border-radius: 1ch;
+}
+
 #blurb {
     display: block;
     margin-top: auto;
@@ -86,23 +90,29 @@ body {
     margin-right: auto;
     color: var(--palette-lightest);
     max-width: 80ch;
+    min-width: 80ch;
+    font-size: 125%;
+    font-family: sans-serif;
     text-size-adjust: auto;
     color: var(--white-ish);
 }
 
 pre {
-    display: block;
+    text-align: center;
+}
+
+pre code {
     margin-left: auto;
     margin-right: auto;
-    text-align: center;
+    font-size: medium;
+    text-align: left;
+    padding: 1ch;
+    width: 80ch;
+    display:inline-block;
 }
 
 code {
     color: var(--palette-accent);
-    text-align: left;
-    display:inline-block;
-    font-size: larger;
-    font-weight: bold;
 }
 
 h1 {
@@ -113,6 +123,14 @@ h1 {
 
 h2,h3,h4 {
     color: var(--palette-light);
+}
+
+h3 {
+    padding-left: 4ch;
+}
+
+h3 ~ p {
+    padding-left: 4ch;
 }
 
 a {
