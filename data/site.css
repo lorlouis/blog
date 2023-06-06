@@ -88,6 +88,8 @@ body {
     background-color: var(--palette-darkest);
     margin-left: auto;
     margin-right: auto;
+    padding-left: 1ch;
+    padding-right: 1ch;
     color: var(--palette-lightest);
     max-width: 160ch;
     min-width: 80ch;
@@ -105,7 +107,7 @@ pre code {
     margin-left: auto;
     margin-right: auto;
     font-size: larger;
-    font-weight: bold;
+    font-weight: bolder;
     text-align: left;
     padding: 1ch;
     max-width: 80ch;
