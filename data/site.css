@@ -15,6 +15,19 @@
     --palette-light: #b3d0c0;
     --palette-lightest: #fffcf2;
     */
+    --text-normal: medium;
+    --text-larger: larger;
+    --text-smaller: smaller;
+    --text-xsmall: x-small;
+}
+
+@media (max-aspect-ratio: 3/4) {
+    :root {
+        --text-normal: max(125%, 4vw);
+        --text-larger: max(larger, 5vw);
+        --text-smaller: max(smaller, 3vw);
+        --text-xsmall: max(x-small, 2vw);
+    }
 }
 
 * {
@@ -31,7 +44,7 @@
 }
 
 #header_top_div a {
-    font-size: larger;
+    font-size: var(--text-larger);
     color: var(--palette-lightest);
 }
 
@@ -45,7 +58,7 @@
 }
 
 #copyright {
-    font-size: x-small;
+    font-size: var(--text-xsmall);
     text-align: center;
     color: gray;
 }
@@ -92,9 +105,9 @@ body {
     padding-right: 1ch;
     color: var(--palette-lightest);
     max-width: 160ch;
-    min-width: 80ch;
+    min-width: min(80ch, 100vw);
     height: 100vh;
-    font-size: 125%;
+    font-size: var(--text-normal);
     font-family: sans-serif;
     text-size-adjust: auto;
     color: var(--white-ish);
@@ -102,12 +115,13 @@ body {
 
 pre {
     text-align: center;
+    overflow: auto;
 }
 
 pre code {
     margin-left: auto;
     margin-right: auto;
-    font-size: larger;
+    font-size: var(--text-larger);
     font-weight: bolder;
     text-align: left;
     padding: 1ch;
@@ -153,11 +167,11 @@ p {
 
 
 section.footnotes h2 {
-    font-size: medium;
+    font-size: var(--text-normal);
     color: var(--palette-accent);
 }
 
 section.footnotes > ol {
-    font-size: medium;
+    font-size: var(--text-normal);
     color: var(--palette-light);
 }
