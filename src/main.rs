@@ -393,6 +393,7 @@ async fn articles<'a>(info: web::Query<Page>) -> impl Responder + 'a {
                             ARTICLES_PER_PAGE * cur_page)
                 }
                 </main>
+                <footer>
                 <div id="page_link_div">
                 <a
                     href="/articles"
@@ -419,7 +420,6 @@ async fn articles<'a>(info: web::Query<Page>) -> impl Responder + 'a {
                     title="last page"
                 >&gt;&gt;</a>
                 </div>
-                <footer>
                 { copyright() }
                 </footer>
             </body>

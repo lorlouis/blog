@@ -93,6 +93,7 @@ body {
     color: var(--palette-lightest);
     max-width: 160ch;
     min-width: 80ch;
+    height: 100vh;
     font-size: 125%;
     font-family: sans-serif;
     text-size-adjust: auto;
