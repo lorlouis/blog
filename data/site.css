@@ -57,6 +57,10 @@
     justify-content: space-between;
 }
 
+#page_link_div a {
+    color: var(--white-ish);
+}
+
 #copyright {
     font-size: var(--text-xsmall);
     text-align: center;
