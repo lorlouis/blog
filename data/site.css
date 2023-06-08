@@ -105,8 +105,8 @@ body {
     background-color: var(--palette-darkest);
     margin-left: auto;
     margin-right: auto;
-    padding-left: 1ch;
-    padding-right: 1ch;
+    padding-left: 2ch;
+    padding-right: 2ch;
     color: var(--palette-lightest);
     max-width: 160ch;
     min-width: min(80ch, 100vw);
@@ -149,12 +149,16 @@ h1, h2, h3, h4, h5 {
     color: var(--palette-accent);
 }
 
-h3 {
+h2 ~ :not(h2, .footnotes, ul, ol){
     padding-left: 4ch;
 }
 
-h3 ~ p {
-    padding-left: 4ch;
+h3 ~ ol {
+    padding-left: 8ch;
+}
+
+h3 ~ ul {
+    padding-left: 8ch;
 }
 
 a {

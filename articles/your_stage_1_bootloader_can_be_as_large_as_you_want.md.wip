@@ -1,0 +1,153 @@
+---
+Title: You don't have to boot from just 512 bytes
+Author: Louis
+Date: 2023-05-28
+Blurb: As long as you boot from a CD
+---
+# You don't have to boot from just 512 bytes
+
+## Wait, what?
+
+Conventional wisdom says that you can only boot from the first sector of a floppy
+(512 bytes) or something that looks and behaves like the first sector of a
+floppy from the point of view of the BIOS. But turns out that's not
+necessarily true if you instead boot from a CD or something that looks and
+behaves like a CD from the point of view of the BIOS.
+
+### The "normal" booting process
+
+Historically the IBM PC did not ship with a hard drive, it had a BASIC
+interpreter in it's ROM and up to 2 floppy disk drives. This meant that if you
+wanted a proper operating system the PC had to boot from a floppy containing an
+OS. To differentiate floppies containing regular data and bootable ones, the
+BIOS looks for the magic numbers `[0x55, 0xAA]` at bytes 511 and 512 of the
+floppy's 0th segment. Once a bootable device is found, it's 0th segment is
+loaded into memory at address `0x7C00` and the CPU starts executing whatever is
+present at that address. When hard drives came along, they behaved a lot like
+floppy drives which meant that the same booting logic could be reused.
+
+Not surprising anyone, this booting mechanism is still supported by most modern
+PCs, although some manufacturers have started to remove support for legacy BIOS
+booting in favour of UEFI, but that's a story/rant for another time.
+
+### How booting from an ISO file works
+
+An ISO file is just a file containing an ISO 9660 file system. The file system
+in itself is not very complex, but most importantly, if you only care about
+finding something that looks like a floppy and boot it, you can ignore most of
+it. There are more ways than one to boot off a CD but I'll be talking about `El
+Torito`[^1] as it is the standard that the PC uses to boot.
+
+```text
+           EL TORITO
+(the bits to boot a PC at least)
+  Offset
+  0x0000_ _____________
+         |    ....     |
+         |  <unused>   |
+         |    ....     |
+  0x8000_|_____________|
+  0x8800_|_primary_vol_|
+         |_boot_record_| --.
+         |    ....     |    |
+         <other volumes>    |  addr
+         |    ....     |    | of boot
+         |_____________|    | catalog
+         |__terminator_|    |
+     .-- |_boot_catalog| <-´
+     `-> |__boot_image_|
+         |    ....     |
+         |<rest of the |
+         | file system>|
+         |    ....     |
+          ¯¯¯¯¯¯¯¯¯¯¯¯¯
+```
+
+## The backstory
+
+In the last few weeks I've been browsing [OSDev.org](https://wiki.osdev.org) a
+bit too much again. And as I realised I had no idea how a PC boots from a CD or
+a USB drive. I knew that they were both *just* mediums containing an ISO file
+but I had no idea how the BIOS would go about reading that ISO file and booting
+from it.
+
+### ISO 9660 101
+
+The format is pretty straight forwards:
+
+* The fist 0x8000 bytes are unused, go wild and use them however you want
+* Everything is segmented into fixed sized segments 2048 bytes each
+* The first segment at offset 0x8000 is called the `Primary Volume Descriptor`
+* The second segment at 0ffset 0x8800 might be a `Boot Record`
+* The rest of ISO 9660 can be safely ignored if you only care about booting
+  an OS from the disk.
+
+That last point is really what peeked my interest. I'm assuming the BIOS is
+lazy and is not checking the full content of the disk, so I wanted to see just
+how little it takes to make a minimally viable bootable ISO file.
+
+### El Torito basics
+
+El torito defines 2 sections of the disk, the `Boot Record Volume` and the
+`Booting Catalog`. The boot record volume is the most boring so we'll start
+with this one.
+
+#### Boot Record Volume Descriptor
+
+The only value that need to be computed here is the sector id of the boot
+catalog, everything else is is either a bunch of zeroes or a magic value of
+some sort.
+
+````text
+          Boot Record Volume Descriptor
+ _______________________________________________
+|Offset_|__type___|____________Desc_____________|
+|_0x000_|___u8____|__boot_record_indicator_=_0__|
+| 0x001 |         |                             |
+|   :   | [u8; 5] | ISO-9660 identifier ="CD001"|
+|_0x005_|_________|_____________________________|
+|_0x006_|___u8____|_________version_=_1_________|
+| 0x007 |         |   Boot system identifier    |
+|   :   | [u8;32] | ="EL TORITO SPECIFICATION"  |
+|_0x026_|_________|_____________________________|
+| 0x027 |         |                             |
+|   :   | [u8;32] |     Unused, "must" be 0     |
+|_0x046_|_________|_____________________________|
+| 0x047 |         |Sector id of the boot catalog|
+|   :   |   u32   |   sec_id * 2048 = offset    |
+|_0x04a_|_________|_____________________________|
+| 0x04b |         |                             |
+|   :   |[u8;1977]|     Unused, "must" be 0     |
+| 0x7ff |         |                             |
+ ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+    * All multi byte numbers are in little endian
+````
+
+#### The Boot Catalog
+
+The boot catalog is the important part, it is composed of a series of entries
+across one or more segments and it defines where the boot media*s* are located
+in the disk.
+
+```text
+                    The Boot Catalog
+[Validation Entry] <- makes sure the data is not corrupt
+[  Initial Entry ] <- contains info about a boot image
+[ Section Header ] <- info about section entries (optional)
+[ Section Entry 1] <- info about a boot image 1 (optional)
+[   Enty Ext 1   ] <- 13 bytes of whatever you want (optional)
+|       :        |
+[ Section Entry N] <- info about a boot image 1 (optional)
+[   Enty Ext N   ] <- 13 bytes of whatever you want (optional)
+```
+
+For an ISO that only contains one boot media we only need to care about the
+`Validation Entry` and the `Initial Entry`
+
+
+## How to boot from more than 512 bytes
+
+
+
+
+[^1]: <https://pdos.csail.mit.edu/6.828/2014/readings/boot-cdrom.pdf>

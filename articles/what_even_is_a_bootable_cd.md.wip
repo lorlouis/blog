@@ -14,20 +14,6 @@ hole.
 
 ## How does a legacy BIOS boot?
 
-Historically the IBM PC did not ship with a hard drive, it had a BASIC
-interpreter in it's ROM and up to 2 floppy disk drives. This meant that if you
-wanted a proper operating system the PC had to boot from a floppy containing an
-OS. To differentiate floppies containing regular data and bootable ones, the
-bios looks for the magic numbers `[0x55, 0xAA]` at bytes 511 and 512 of the
-floppy's 0th segment. Once a bootable device is found, it's 0th segment is
-loaded into memory at address `0x7C00` (most of the time) and the CPU starts
-executing whatever is present at that address. When hard drives came along,
-they behaved a lot like floppy drives which meant that the same booting logic
-could be reused.
-
-Not surprising anyone, this booting mechanism is still supported by most modern
-PCs, although some manufacturers have started to remove support for legacy BIOS
-booting in favour of UEFI, but that's a story/rant for another time.
 
 ```
 Ok great, my PC boots by looking for special sectors
