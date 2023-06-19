@@ -10,33 +10,33 @@ Blurb: As long as you boot from a CD
 
 Conventional wisdom says that you can only boot from the first sector of a
 floppy (512 bytes) or something that looks and behaves like the first sector of
-a floppy. But turns out that's not always true if you instead boot from a CD or
-something that looks and behaves like a CD.
+a floppy. But it doesn't have to be the case as long as you boot from a CD.
 
 ### The "normal" booting process
 
-Historically the IBM PC did not ship with a hard drive, it had a BASIC
-interpreter in it's ROM and up to 2 floppy disk drives. This meant that if you
-wanted a proper operating system the PC had to boot from a floppy containing an
-OS. To differentiate floppies containing regular data and bootable ones, the
-BIOS looks for the magic numbers `[0x55, 0xAA]` at the end of each floppy's
-first segment. Once a bootable device is found, the segment is loaded into
-memory at address `0x7C00` and the CPU starts executing at that address. When
-hard drives came along, they behaved a lot like floppy drives which meant that
-the same booting logic could be reused.
+Historically the IBM PC did not ship with a hard drive; it had a BASIC
+interpreter in its ROM and up to 2 floppy disk drives. If you wanted a proper
+operating system, the PC had to boot from a floppy containing an OS. The BIOS
+looked for the magic numbers `[0x55, 0xAA]` at the end of each floppy's first
+segment to detect if it could boot from one of the drives. Once a bootable
+device was found, the segment was loaded into memory at address `0x7C00`, and
+the CPU started executing at that address. When hard drives came along, a
+similar technique was used to boot from the
+[MBR](https://en.wikipedia.org/wiki/Master_boot_record), but only 446 byes were
+available[^1] compared to the floppies' 510.
 
-Unsurprisingly, this booting mechanism is still supported by most modern
-PCs, although some manufacturers have started to remove support for legacy BIOS
-booting in favour of UEFI, but that's a story/rant for another time.
+Unsurprisingly, most modern PCs still support this booting mechanism. However,
+some manufacturers have started to remove support for legacy BIOS booting in
+favour of UEFI, but that's a story/rant for another time.
 
 ### How booting from an ISO file works
 
 An ISO file is just a file containing an ISO 9660 file system which is the file
 system that CDs use. When it comes to PCs, they boot off CDs thought the `El
-Torito`[^1] extension developped by IBM an Phoenix Technologies. The ISO file
+Torito`[^2] extension developed by IBM an Phoenix Technologies. The ISO file
 system itself is not very complex, but most importantly, if you only care about
 finding something that looks like a floppy and boot it, you can ignore most of
-it, and I'm banking on that to build what I call a `Minimally Vialble ISO`.
+it, and I'm banking BIOSes cutting corners to build a `Minimal Bootable ISO`.
 
 ```text
              EL TORITO
@@ -66,9 +66,9 @@ it, and I'm banking on that to build what I call a `Minimally Vialble ISO`.
 ## The backstory
 
 I've been browsing [OSDev.org](https://wiki.osdev.org) a bit too much recently.
-And as I realised I had no idea how a PC boots from a CD or a USB drive. I knew
-that they were both *just* mediums containing an ISO file but I had no idea how
-the BIOS would go about reading that ISO file and booting from it.
+And as I realised I had no idea how a PC boots from a CD. I knew that they were
+both *just* mediums containing an ISO file but I had no idea how the BIOS would
+go about reading that ISO file and booting from it.
 
 ### ISO 9660 101
 
@@ -146,7 +146,7 @@ For an ISO that only contains one boot media we only need to care about the
 
 ### The Validation Entry
 
-The validation entry is used to try and make sure the content is not corrupted
+The validation entry is used to try and make sure the content is not corrupt. 
 
 ```text
               Validation Entry
@@ -159,15 +159,214 @@ The validation entry is used to try and make sure the content is not corrupted
 | 0x04 |         |                             |
 |  ..  | [u8;24] |      manufacturer id        |
 |_0x1b_|_________|_____________________________|
+| 0x1c |   u16   |      checksum reserved      |
+|_0x1d_|_________|_____________________________|
 |_0x1e_|___u8____|____________0x55_____________|
 | 0x1f |   u8    |            0xaa             |
  ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
 ```
 
-## How to boot from more than 512 bytes
+Platform is interesting because it was originally define as:
+
+```rust
+#[repr(u8)]
+enum PlatformId {
+    x86     = 0x0,
+    PowerPC = 0x1,
+    Mac     = 0x2,
+}
+```
+
+But Mac, in this case the mac platform pre Intel, never implemented booting off a
+CD using El Torito. Nowadays although it is not in the standard, `0xef` is
+commonly used to mark bootable images that rely in UEFI. This is the enum I
+ended up using.
+
+```rust
+#[repr(u8)]
+pub enum Platform {
+    X86 = 0,
+    PPC = 1,
+    Mac = 2, // mac is never used ?
+    UEFI = 0xef, // not part of the spec..
+}
+```
+
+The other noteworthy field is the checksum reserved one. To detect data
+corruption. It's computed by treating the whole segment as a list of `u16` and
+summing them. This one `u16` is used to make sure that the sum wraps around to
+0;
+
+### The Initial Entry
+
+The second entry in the catalog is the initial entry, it contains info on a
+segment containing a bare metal 16 bit "real mode" executable in the case of
+x86 and how to load it into memory.
+
+```text
+                Initial Entry
+ ______________________________________________
+|Offset|__type___|____________Desc_____________|
+|_0x00_|___u8____|_boot_indicator_=(0x88|0x00)_|
+|_0x01_|___u8____|___boot_media_type_=(0..=4)__|
+| 0x02 |   u16   |      Load Segment addr      |
+|_0x03_|_________|_____________________________|
+|_0x04_|___u8____|_________system_type_________|
+|_0x05_|___u8____|_____Unused_"must"_be_0______|
+| 0x06 |   u16   |       Sector Count          |
+|_0x07_|_________|_____________________________|
+| 0x08 |         |    Block address of the     |
+|  ..  |   u32   |         bootloader          |
+|_0x0b_|_________|_____________________________|
+| 0x0c |         |                             |
+|  ..  | [u8;17] |     Unused "must" be 0      |
+| 0x1f |         |                             |
+ ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+```
+
+A value of `0x88` in the boot indicator marks the entry as bootable which, in
+practice, is almost always set. The boot media type lets the BIOS expose this
+sector to the executable as if it were a floppy, a hard drive or not to do
+anything special. This lets older operating systems like DOS boot and read data
+from a CD as if it were a floppy without needing any drivers.
+
+#### `Sector count`
+
+This is the field that convinced me to write this article. I wrote a pretty
+simple program to read an ubuntu ISO and found out that the sector count was
+instructing the BIOS to read way more than 512 bytes into memory.
 
 
+## A Minimal Bootable ISO with a payload larger than 512 bytes
 
+I uploaded the code I used to test my theory to GitHub under
+<https://github.com/lorlouis/iso9660> calling `make` will create a disk image
+and run it via qemu.
+[`src/bin/bootable.rs`](https://github.com/lorlouis/iso9660/blob/main/src/bin/bootable.rs)
+contains the steps to create a minimally viable ISO. The steps loosely resemble
 
+1. Create a primary header
 
-[^1]: <https://pdos.csail.mit.edu/6.828/2014/readings/boot-cdrom.pdf>
+```rust
+let primary_header = VD {
+    ty: VDType::PrimaryVD,
+    version: 1,
+};
+```
+This is needed as [SeaBIOS](https://www.seabios.org/SeaBIOS) the default i386
+BIOS implementation in QEMU checks that what is in the CD drive really is a CD.
+
+2. Create a boot record of the El Torito variety
+
+```rust
+let boot_record = BootRecord::el_torito(18);
+```
+`18` here denotes the sector 18 at which the boot catalog will be placed. The
+first 15 sectors are unused, the 16th is used by the primary volume descriptor
+and the 17th being the boot record. Which leaves the 18th sector free.
+
+3. Create a validation entry
+
+```rust
+let validation = ValidationEntry {
+    header_id: 1,
+    platform_id: Platform::X86,
+    manufacturer_id: None,
+};
+```
+
+SeaBIOS does not check the sector's checksum so the `checksum reserved`
+field is filled with 0s.
+
+4. Create the initial entry
+
+```rust
+let initial = InitialEntry {
+    boot_indicator: BootIndicator::Bootable,
+    boot_media: BootMedia::Floppy1_44,
+    load_segment: 0, // ie default value (I know it should be an option)
+    sys_type: 0,  // no idea what it's supposed to be, idk it felt right
+    sector_count: 4, // hmm intresting
+    virtual_disk_addr: 19, // the last segment
+};
+```
+
+`sector_count` is set to 4 because of the boot media emulation. Floppy sectors
+are 512 bytes long and a CD sector is 2048 bytes long. It is possible to load
+more than that but there was no need for this POC.
+
+5. The last step is to concatenate the files into an iso.
+
+```make
+# create the 20 sectors required
+dd if=/dev/zero of=$(ISO_FILE) count=20 bs=2048
+# copy iso data in sector 17 and 18
+dd if=$(ISO_DATA) of=$(ISO_FILE) seek=16 count=3 bs=2048 conv=notrunc
+# copy stage 1
+dd if=$(STAGE1_BIN) of=$(ISO_FILE) seek=$((19*4)) count=4 bs=512 conv=notrunc
+```
+
+The executable I loaded in the last sector was generated from this assembly
+```asm
+org 0x7c00 ; address at which the bios will load this executable
+bits 16 ; 16 bit mode
+
+    ; initialise pointers
+    mov ax, 0
+    mov ds, ax ; data segment 0
+    mov ss, ax ; stack segment 0
+    mov es, ax ; extra segment 0?
+    mov sp, 0x7c00 ; set stack pointer at the start of this executable
+
+_start:
+    mov si, hello
+    call puts
+    jmp other ; jump into code after the 512th byte
+
+; si=str, cl=strlen
+puts:
+    lodsb
+    or al, al
+    jz .done
+    call putc
+    jmp puts
+.done:
+    ret
+
+; al=char
+putc:
+    mov ah, 0eh
+    int 10h
+    ret
+
+hello: db 'hello world!', 10, 13, 0
+hello_len: equ $-hello
+
+meme: db 'hello meme!', 0
+meme_len: equ $-meme
+
+times 510 - ($ - $$) db 0 ; fill with 0s until bytes 511
+db 0x55, 0xaa ; mark the sector as bootable by setting the bytes 511 and 512
+
+other:
+    mov si, meme
+    call puts
+    hlt
+
+times 2048 - ($ - $$) db 0 ; fill the rest of the disk sector with 0s
+```
+
+## Is this even remotely useful?
+
+**No.** Writing a bootable real more executable is fairly easy and it is a
+pretty common first misstep for a lot of OS devs. In most cases if you want to
+write an operating system you do not need to write your own boot loader and
+confining yourself to 16 bit real mode assembly can't get you very far in
+`$CURENT_YEAR`. Most of the questions asking how to use use more than 512 bytes
+came from people trying to avoid writing a multi-stage bootloader even though
+there are many benefits to separating your bootloader in stages. This article
+details a quirk of booting off a CD on the PC platform. None of it is
+applicable to ISOs burnt to USB drives or booting from a hard drive.
+
+[^1]: <https://en.wikipedia.org/wiki/Master_boot_record#Sector_layout>
+[^2]: <https://pdos.csail.mit.edu/6.828/2014/readings/boot-cdrom.pdf>
