@@ -18,12 +18,11 @@ Historically the IBM PC did not ship with a hard drive; it had a BASIC
 interpreter in its ROM and up to 2 floppy disk drives. If you wanted a proper
 operating system, the PC had to boot from a floppy containing an OS. The BIOS
 looked for the magic numbers `[0x55, 0xAA]` at the end of each floppy's first
-segment to detect if it could boot from one of the drives. Once a bootable
-device was found, the segment was loaded into memory at address `0x7C00`, and
-the CPU started executing at that address. When hard drives came along, a
-similar technique was used to boot from the
-[MBR](https://en.wikipedia.org/wiki/Master_boot_record), but only 446 byes were
-available[^1] compared to the floppies' 510.
+segment to detect if it could boot from it. Once a bootable drive was found,
+the segment was loaded into memory at address `0x7C00`, and the CPU started
+executing at that address. When hard drives came along, a similar technique was
+used to boot from the [MBR](https://en.wikipedia.org/wiki/Master_boot_record),
+but only 446 byes were available[^1] compared to the floppies' 510.
 
 Unsurprisingly, most modern PCs still support this booting mechanism. However,
 some manufacturers have started to remove support for legacy BIOS booting in
@@ -33,9 +32,9 @@ favour of UEFI, but that's a story/rant for another time.
 
 ### A tiny bit of context
 
-An ISO file is *just* a file containing an ISO 9660 file system which is the file
-system that CDs use. Regarding PCs, they boot off CDs via the `El Torito`[^2]
-extension developed by IBM and Phoenix Technologies.
+An ISO file is *just* a file containing an ISO 9660 file system which is the
+file system that CDs use. PCs they boot off CDs via the `El Torito`[^2]
+extension to ISO 9660 standard.
 
 The format is pretty straight forwards:
 
@@ -67,24 +66,25 @@ An ISO 9660 with EL TORITO extension
 * The first 0x8000 bytes are unused, go wild and use them however you want.
   These bytes were left unused by the specification to allow for other booting
   systems to work on CDs. When "burning" an ISO to a thumb drive, this section
-  contains an MBR or equivalent.
+  generally contains an MBR or the UEFI equivalent.
 
 * The CD is segmented into fixed-sized segments, in most cases, 2048 bytes each.
 
 * The first segment used is at offset 0x8000, called the `Primary Volume Descriptor`.
 
-* The second segment at offset 0x8800 may be a `Boot Record`.
+* The second segment at offset 0x8800 *may* be a `Boot Record`.
 
 * It is not required to read the CD's filesystem to boot from a CD.
 
 That last point piqued my interest. If you only care about finding something
 that looks like a floppy and boot it, you can ignore most of the filesystem.
-With that in mind, I set off to make a `Minimal Bootable ISO`.
+I wanted to see just how little of the spec I had to implement to build a
+ `Minimal Bootable ISO`.
 
 ### El Torito basics
 
-El Torito defines two sections of the CD, the `Booting Catalog`, which
-comprises multiple entries containing information about one or many bootable
+El Torito defines two sections of the CD, the `Booting Catalog`, which is
+comprised of multiple entries containing information about one or more bootable
 payloads. And the `Boot Record Volume`, which the BIOS uses to find the boot
 catalog.
 
@@ -116,7 +116,7 @@ catalog.
 ````
 
 The only value that changes is the `sector id of the boot catalog` (bytes `0x47`
-to `0x4a`); everything else is either zeroed or a magic value of some sort.
+to `0x4a`). Everything else is either zeroed or a magic value of some sort.
 
 #### The Boot Catalog
 
@@ -226,7 +226,7 @@ A  boot indicator of value `0x88` marks the entry as bootable, which, in
 practice, is almost always set. The boot media type lets the BIOS expose this
 sector to the executable as if it were a floppy, a hard drive or a CD. This
 lets older operating systems like DOS boot and read data from a CD as if it
-were a floppy without needing any drivers.
+were a floppy without needing any extra drivers.
 
 #### `Sector count`
 
@@ -252,7 +252,8 @@ let primary_header = VD {
 };
 ```
 This is needed as [SeaBIOS](https://www.seabios.org/SeaBIOS), the default i386
-BIOS implementation in QEMU, checks if what is in the CD drive is *really* a CD.
+BIOS implementation in QEMU, checks to see if what's in the CD drive *really*
+is a CD.
 
 2. Create a boot record of the El Torito variety
 
