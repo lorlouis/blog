@@ -29,17 +29,18 @@ Unsurprisingly, most modern PCs still support this booting mechanism. However,
 some manufacturers have started to remove support for legacy BIOS booting in
 favour of UEFI, but that's a story/rant for another time.
 
-### How booting from an ISO file works
+## A Minimal Bootable ISO
 
-An ISO file is just a file containing an ISO 9660 file system which is the file
-system that CDs use. When it comes to PCs, they boot off CDs thought the `El
-Torito`[^2] extension developed by IBM an Phoenix Technologies. The ISO file
-system itself is not very complex, but most importantly, if you only care about
-finding something that looks like a floppy and boot it, you can ignore most of
-it, and I'm banking BIOSes cutting corners to build a `Minimal Bootable ISO`.
+### A tiny bit of context
+
+An ISO file is *just* a file containing an ISO 9660 file system which is the file
+system that CDs use. Regarding PCs, they boot off CDs via the `El Torito`[^2]
+extension developed by IBM and Phoenix Technologies.
+
+The format is pretty straight forwards:
 
 ```text
-             EL TORITO
+An ISO 9660 with EL TORITO extension
   (the bits to boot a PC at least)
   Offset
   0x0000_ _____________
@@ -63,39 +64,31 @@ it, and I'm banking BIOSes cutting corners to build a `Minimal Bootable ISO`.
           ¯¯¯¯¯¯¯¯¯¯¯¯¯
 ```
 
-## The backstory
+* The first 0x8000 bytes are unused, go wild and use them however you want.
+  These bytes were left unused by the specification to allow for other booting
+  systems to work on CDs. When "burning" an ISO to a thumb drive, this section
+  contains an MBR or equivalent.
 
-I've been browsing [OSDev.org](https://wiki.osdev.org) a bit too much recently.
-And as I realised I had no idea how a PC boots from a CD. I knew that they were
-both *just* mediums containing an ISO file but I had no idea how the BIOS would
-go about reading that ISO file and booting from it.
+* The CD is segmented into fixed-sized segments, in most cases, 2048 bytes each.
 
-### ISO 9660 101
+* The first segment used is at offset 0x8000, called the `Primary Volume Descriptor`.
 
-The format is pretty straight forwards:
+* The second segment at offset 0x8800 may be a `Boot Record`.
 
-* The fist 0x8000 bytes are unused, go wild and use them however you want
-* Everything is segmented into fixed sized segments 2048 of bytes each
-* The first segment at offset 0x8000 is called the `Primary Volume Descriptor`
-* The second segment at offset 0x8800 might be a `Boot Record`
-* If you only care about booting an OS from the CD, the rest of ISO 9660 can
-  be *"safely"* ignored.
+* It is not required to read the CD's filesystem to boot from a CD.
 
-That last point is really what peeked my interest. I'm assuming the BIOS is
-lazy and is not checking the full content of the CD, so I wanted to see just
-how little it takes to make a minimally viable bootable ISO file.
+That last point piqued my interest. If you only care about finding something
+that looks like a floppy and boot it, you can ignore most of the filesystem.
+With that in mind, I set off to make a `Minimal Bootable ISO`.
 
 ### El Torito basics
 
-El torito defines 2 sections of the CD, the `Boot Record Volume` and the
-`Booting Catalog`. The boot record volume is what the BIOS uses to find the
-rest of the data structures defined by el torito.
+El Torito defines two sections of the CD, the `Booting Catalog`, which
+comprises multiple entries containing information about one or many bootable
+payloads. And the `Boot Record Volume`, which the BIOS uses to find the boot
+catalog.
 
 #### Boot Record Volume Descriptor
-
-The only value that changes here is the sector id of the boot catalog (bytes
-`0x47` to `0x4a`), everything else is is either a bunch of zeroes or a magic
-value of some sort.
 
 ````text
           Boot Record Volume Descriptor
@@ -122,31 +115,36 @@ value of some sort.
     * All multi byte numbers are in little endian
 ````
 
+The only value that changes is the `sector id of the boot catalog` (bytes `0x47`
+to `0x4a`); everything else is either zeroed or a magic value of some sort.
+
 #### The Boot Catalog
 
-The boot catalog is the most important part, it is stored across one or more
-segments and it is composed of a series of entries. It defines where the boot
-media(s) are located on the CD.
+The boot catalog defines where the boot payload(s) are located.
+And is stored across one or more segments and is composed of a
+series of entries.
 
 ```text
                     The Boot Catalog
 bytes 0x00 ........ 0x1f
- 0x00 [Validation Entry] <- makes sure the data is not corrupt
- 0x20 [  Initial Entry ] <- contains info about a boot image
+ 0x00 [Validation Entry] <- makes sure the data is not corrupted
+ 0x20 [  Initial Entry ] <- contains info about a boot payload
  0x40 [ Section Header ] <- info about section entries (optional)
  0x60 [ Section Entry 1] <- info about a boot image 1 (optional)
- 0x80 [   Enty Ext 1   ] <- 13 bytes of whatever you want (optional)
+ 0x80 [  Entry Ext 1   ] <- 13 bytes of data* (optional)
   --  |       :        |
- 0x?? [ Section Entry N] <- info about a boot image 1 (optional)
- 0x?? [   Enty Ext N   ] <- 13 bytes of whatever you want (optional)
+ 0x?? [ Section Entry N]
+ 0x?? [   Enty Ext N   ]
+
+    * Multiple `Entry Ext` can be chained together.
 ```
 
-For an ISO that only contains one boot media we only need to care about the
+For an ISO containing only one boot payload, we only need to consider the
 `Validation Entry` and the `Initial Entry`.
 
 ### The Validation Entry
 
-The validation entry is used to try and make sure the content is not corrupt. 
+The validation entry is used to detect if the content is corrupted.
 
 ```text
               Validation Entry
@@ -166,7 +164,7 @@ The validation entry is used to try and make sure the content is not corrupt.
  ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
 ```
 
-Platform is interesting because it was originally define as:
+`Platform id` is interesting because it was originally defined as:
 
 ```rust
 #[repr(u8)]
@@ -177,10 +175,11 @@ enum PlatformId {
 }
 ```
 
-But Mac, in this case the mac platform pre Intel, never implemented booting off a
-CD using El Torito. Nowadays although it is not in the standard, `0xef` is
-commonly used to mark bootable images that rely in UEFI. This is the enum I
-ended up using.
+But Mac, in this case, the Mac platform pre-Intel, never implemented booting
+off a CD using El Torito. Although not in the standard, `0xef` is commonly used
+to identify bootable images that rely on UEFI.
+
+This is the enum I ended up using:
 
 ```rust
 #[repr(u8)]
@@ -192,16 +191,15 @@ pub enum Platform {
 }
 ```
 
-The other noteworthy field is the checksum reserved one. To detect data
-corruption. It's computed by treating the whole segment as a list of `u16` and
-summing them. This one `u16` is used to make sure that the sum wraps around to
-0;
+The other noteworthy field is `checksum reserved`. A checksum is computed by
+summing up the whole segment as a list of `u16`. This reserved `u16` is used to
+ensure the sum wraps around to zero.
 
 ### The Initial Entry
 
-The second entry in the catalog is the initial entry, it contains info on a
-segment containing a bare metal 16 bit "real mode" executable in the case of
-x86 and how to load it into memory.
+The second entry in the catalog is the initial entry; it contains info on a
+segment containing a bare metal 16-bit "real mode" executable and how to load
+it into memory.
 
 ```text
                 Initial Entry
@@ -224,26 +222,26 @@ x86 and how to load it into memory.
  ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
 ```
 
-A value of `0x88` in the boot indicator marks the entry as bootable which, in
+A  boot indicator of value `0x88` marks the entry as bootable, which, in
 practice, is almost always set. The boot media type lets the BIOS expose this
-sector to the executable as if it were a floppy, a hard drive or not to do
-anything special. This lets older operating systems like DOS boot and read data
-from a CD as if it were a floppy without needing any drivers.
+sector to the executable as if it were a floppy, a hard drive or a CD. This
+lets older operating systems like DOS boot and read data from a CD as if it
+were a floppy without needing any drivers.
 
 #### `Sector count`
 
-This is the field that convinced me to write this article. I wrote a pretty
-simple program to read an ubuntu ISO and found out that the sector count was
-instructing the BIOS to read way more than 512 bytes into memory.
+`Sector count` tells the BIOS how many sectors of the emulated device it should
+load into memory. This lets you load more than one floppy segment. In CD mode,
+this would let you load up to `128MB` of data into memory, crushing the merger
+`510B` (if that) level 1 bootloaders need to restrict themselves to.
 
+## Booting a payload larger than 512 bytes
 
-## A Minimal Bootable ISO with a payload larger than 512 bytes
-
-I uploaded the code I used to test my theory to GitHub under
-<https://github.com/lorlouis/iso9660> calling `make` will create a disk image
-and run it via qemu.
+I uploaded the code I used to build my `Minimal Bootable ISO` to GitHub under
+<https://github.com/lorlouis/iso9660>. Calling `make` will create a disk image
+and run it via QEMU.
 [`src/bin/bootable.rs`](https://github.com/lorlouis/iso9660/blob/main/src/bin/bootable.rs)
-contains the steps to create a minimally viable ISO. The steps loosely resemble
+contains the steps to create the ISO. The steps loosely resemble:
 
 1. Create a primary header
 
@@ -253,8 +251,8 @@ let primary_header = VD {
     version: 1,
 };
 ```
-This is needed as [SeaBIOS](https://www.seabios.org/SeaBIOS) the default i386
-BIOS implementation in QEMU checks that what is in the CD drive really is a CD.
+This is needed as [SeaBIOS](https://www.seabios.org/SeaBIOS), the default i386
+BIOS implementation in QEMU, checks if what is in the CD drive is *really* a CD.
 
 2. Create a boot record of the El Torito variety
 
@@ -262,8 +260,8 @@ BIOS implementation in QEMU checks that what is in the CD drive really is a CD.
 let boot_record = BootRecord::el_torito(18);
 ```
 `18` here denotes the sector 18 at which the boot catalog will be placed. The
-first 15 sectors are unused, the 16th is used by the primary volume descriptor
-and the 17th being the boot record. Which leaves the 18th sector free.
+first 15 sectors are unused, the primary volume descriptor uses the 16th, and
+the 17th is the boot record, which leaves the 18th sector free.
 
 3. Create a validation entry
 
@@ -292,10 +290,10 @@ let initial = InitialEntry {
 ```
 
 `sector_count` is set to 4 because of the boot media emulation. Floppy sectors
-are 512 bytes long and a CD sector is 2048 bytes long. It is possible to load
-more than that but there was no need for this POC.
+are 512 bytes long, and a CD sector is 2048 bytes long. It is possible to load
+more than that, but I did not see any need for this proof of concept.
 
-5. The last step is to concatenate the files into an iso.
+5. The last step is to concatenate the files into an ISO
 
 ```make
 # create the 20 sectors required
@@ -358,15 +356,14 @@ times 2048 - ($ - $$) db 0 ; fill the rest of the disk sector with 0s
 
 ## Is this even remotely useful?
 
-**No.** Writing a bootable real more executable is fairly easy and it is a
-pretty common first misstep for a lot of OS devs. In most cases if you want to
-write an operating system you do not need to write your own boot loader and
-confining yourself to 16 bit real mode assembly can't get you very far in
-`$CURENT_YEAR`. Most of the questions asking how to use use more than 512 bytes
-came from people trying to avoid writing a multi-stage bootloader even though
-there are many benefits to separating your bootloader in stages. This article
-details a quirk of booting off a CD on the PC platform. None of it is
-applicable to ISOs burnt to USB drives or booting from a hard drive.
+**No.**
+
+Most of the questions asking how to boot off more than 512 bytes come from
+people trying to avoid writing a multi-stage bootloader, even though there are
+many benefits to separating your bootloader in stages. This article details a
+quirk of booting off a CD on the PC platform. None of it applies to ISOs burnt
+to USB drives or booting from a hard drive and thus would still require you to
+implement multi-stage booting.
 
 [^1]: <https://en.wikipedia.org/wiki/Master_boot_record#Sector_layout>
 [^2]: <https://pdos.csail.mit.edu/6.828/2014/readings/boot-cdrom.pdf>
