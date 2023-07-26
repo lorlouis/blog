@@ -183,3 +183,9 @@ section.footnotes > ol {
     font-size: var(--text-normal);
     color: var(--palette-light);
 }
+
+del {
+    text-decoration-line: line-through;
+    text-decoration-thickness: 0.1rem;
+    text-decoration-color: var(--white-ish);
+}
