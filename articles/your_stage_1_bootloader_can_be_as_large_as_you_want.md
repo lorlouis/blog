@@ -306,7 +306,7 @@ dd if=$(STAGE1_BIN) of=$(ISO_FILE) seek=$((19*4)) count=4 bs=512 conv=notrunc
 ```
 
 The executable I loaded in the last sector was generated from this assembly
-```asm
+```x86asm
 org 0x7c00 ; address at which the bios will load this executable
 bits 16 ; 16 bit mode
 

@@ -215,6 +215,9 @@ fn common_head(title: String, author: Option<String>, blurb: Option<String>) -> 
             }).collect()
         }
         <meta name="author" content={[move] format!("\"{}\"", author)}>
+        <link rel="stylesheet" href="/data/highlight/styles/nord.min.css">
+        <script src="/data/highlight/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script>
     }.to_string()
 }
 

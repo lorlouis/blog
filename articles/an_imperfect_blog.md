@@ -23,7 +23,7 @@ about it and decided I should start finishing projects more often.
 
 
 ## The average life cycle of a project
-```
+```no-hi
       Get a project idea
               ¦ <---------------.
               v                  \
