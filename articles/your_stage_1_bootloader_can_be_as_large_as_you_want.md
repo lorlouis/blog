@@ -38,7 +38,7 @@ extension to ISO 9660 standard.
 
 The format is pretty straight forwards:
 
-```text
+```no-hi
 An ISO 9660 with EL TORITO extension
   (the bits to boot a PC at least)
   Offset
@@ -90,7 +90,7 @@ catalog.
 
 #### Boot Record Volume Descriptor
 
-````text
+````no-hi
           Boot Record Volume Descriptor
  _______________________________________________
 |Offset_|__type___|____________Desc_____________|
@@ -124,7 +124,7 @@ The boot catalog defines where the boot payload(s) are located.
 And is stored across one or more segments and is composed of a
 series of entries.
 
-```text
+```no-hi
                     The Boot Catalog
 bytes 0x00 ........ 0x1f
  0x00 [Validation Entry] <- makes sure the data is not corrupted
@@ -146,7 +146,7 @@ For an ISO containing only one boot payload, we only need to consider the
 
 The validation entry is used to detect if the content is corrupted.
 
-```text
+```no-hi
               Validation Entry
  ______________________________________________
 |Offset|__type___|____________Desc_____________|
@@ -201,7 +201,7 @@ The second entry in the catalog is the initial entry; it contains info on a
 segment containing a bare metal 16-bit "real mode" executable and how to load
 it into memory.
 
-```text
+```no-hi
                 Initial Entry
  ______________________________________________
 |Offset|__type___|____________Desc_____________|
