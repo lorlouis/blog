@@ -228,7 +228,7 @@ sector to the executable as if it were a floppy, a hard drive or a CD. This
 lets older operating systems like DOS boot and read data from a CD as if it
 were a floppy without needing any extra drivers.
 
-#### `Sector count`
+#### Sector count
 
 `Sector count` tells the BIOS how many sectors of the emulated device it should
 load into memory. This lets you load more than one floppy segment. In CD mode,
