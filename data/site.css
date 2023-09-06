@@ -21,12 +21,17 @@
     --text-xsmall: x-small;
 }
 
-@media (max-aspect-ratio: 3/4) {
-    :root {
-        --text-normal: max(125%, 4vw);
-        --text-larger: max(larger, 5vw);
-        --text-smaller: max(smaller, 3vw);
-        --text-xsmall: max(x-small, 2vw);
+@media (min-aspect-ratio: 3/4) {
+    h2 ~ :not(h2, .footnotes, ul, ol){
+        padding-left: 4ch;
+    }
+
+    h3 ~ ol {
+        padding-left: 8ch;
+    }
+
+    h3 ~ ul {
+        padding-left: 8ch;
     }
 }
 
@@ -149,17 +154,6 @@ h1, h2, h3, h4, h5 {
     color: var(--palette-accent);
 }
 
-h2 ~ :not(h2, .footnotes, ul, ol){
-    padding-left: 4ch;
-}
-
-h3 ~ ol {
-    padding-left: 8ch;
-}
-
-h3 ~ ul {
-    padding-left: 8ch;
-}
 
 a {
     color: var(--palette-accent);
