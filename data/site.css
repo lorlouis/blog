@@ -35,6 +35,13 @@
     }
 }
 
+@media (max-aspect-ratio: 3/4) {
+    html {
+        /* only supported by safari and FF */
+        font-size-adjust: ex-height 1.25;
+    }
+}
+
 * {
     border-radius: 1ch;
 }
