@@ -186,7 +186,7 @@ fn copyright() -> String {
     html! {
         <p id="copyright">
         "Found a typo?"
-        <a href="https://https://github.com/lorlouis/blog">" open a pr!"</a>
+        <a href="https://www.github.com/lorlouis/blog">" open a pr!"</a>
         <br/>
         {[move] format!("copyright Louis Sven Goulet 2023-{}", year)}
         </p>
