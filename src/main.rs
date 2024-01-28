@@ -102,6 +102,7 @@ struct Page {
 }
 
 async fn page_404() -> HttpResponse {
+
     let body: Root = html!{
         <!DOCTYPE html>
         <html>
@@ -184,6 +185,9 @@ fn copyright() -> String {
     let year = now.year();
     html! {
         <p id="copyright">
+        "Found a typo?"
+        <a href="https://https://github.com/lorlouis/blog">" open a pr!"</a>
+        <br/>
         {[move] format!("copyright Louis Sven Goulet 2023-{}", year)}
         </p>
     }.to_string()
