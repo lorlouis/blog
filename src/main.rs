@@ -187,7 +187,7 @@ fn copyright() -> String {
         <p id="copyright">
         "Found a typo?"
         <a href="https://www.github.com/lorlouis/blog">" open a pr!"</a>
-        <br/>
+        <br>
         {[move] format!("copyright Louis Sven Goulet 2023-{}", year)}
         </p>
     }.to_string()
@@ -244,10 +244,10 @@ async fn basic_md_page(path: &str) -> impl Responder {
                 <main>
                 { markdown.to_html() }
                 </main>
+                <footer>
+                { common_footer() }
+                </footer>
             </body>
-            <footer>
-            { common_footer() }
-            </footer>
         </html>
     }.into();
     HttpResponse::Ok()
@@ -277,13 +277,13 @@ async fn index() -> impl Responder {
                 </header>
                 <main>
                 { markdown.to_html() }
-                <h3>"Recent Articles"</h2>
+                <h3>"Recent Articles"</h3>
                 { build_articles_html_list(posts_ref, 5, 0) }
                 </main>
+                <footer>
+                { common_footer() }
+                </footer>
             </body>
-            <footer>
-            { common_footer() }
-            </footer>
         </html>
     }.into();
     HttpResponse::Ok()
@@ -315,7 +315,7 @@ fn build_articles_html_list(posts: &[(String, String, BTreeMap<String, String>)]
                             </a>
                         </h3>
                         {[move] blurb.iter().map(|v| html!{
-                            <blockquote id="blurb">
+                            <blockquote class="blurb">
                             {v.to_string()}
                             </blockquote>
                         }).collect()}
@@ -409,19 +409,19 @@ async fn articles<'a>(info: web::Query<Page>) -> impl Responder + 'a {
                     title="fist page"
                 >&lt;&lt;</a>
                 <a
-                    href={format!{"\"articles?p={}\"", cur_page.saturating_sub(1)}}
+                    href={format!{"\"articles?p={}\" ", cur_page.saturating_sub(1)}}
                     class="article_link"
                     id="link_previous_page"
                     title="previous page"
                 >&lt;</a>
                 <a
-                    href={format!{"\"articles?p={}\"", cur_page.saturating_add(1)}}
+                    href={format!{"\"articles?p={}\" ", cur_page.saturating_add(1)}}
                     class="article_link"
                     id="link_next_page"
                     title="next page"
                 >&gt;</a>
                 <a
-                    href={format!{"\"articles?p={}\"", last_page}}
+                    href={format!{"\"articles?p={}\" ", last_page}}
                     class="article_link"
                     id="link_last_page"
                     title="last page"

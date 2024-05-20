@@ -20,3 +20,4 @@ log = { version = "0.4" }
 env_logger = { version = "0.10" }
 lazy_static = { version = "1.4" }
 html_template = { git = "https://github.com/lorlouis/html_template", branch = "main" }
+#html_template = { path = "../html_template/html_template"}

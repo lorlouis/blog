@@ -46,7 +46,7 @@
     border-radius: 1ch;
 }
 
-#blurb {
+.blurb {
     display: block;
     margin-top: auto;
 }
