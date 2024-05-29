@@ -1,34 +1,33 @@
 use std::collections::BTreeMap;
-use std::io::{BufRead, self};
+use std::io::{self, BufRead};
 
 pub fn md_to_html(s: &str) -> String {
     markdown::to_html_with_options(
         s,
         &markdown::Options {
-        parse: markdown::ParseOptions {
-            gfm_strikethrough_single_tilde: true,
-            constructs: markdown::Constructs {
-                autolink: true,
-                character_escape: true,
-                gfm_footnote_definition: true,
-                gfm_label_start_footnote: true,
-                gfm_strikethrough: true,
-                gfm_table: true,
+            parse: markdown::ParseOptions {
+                gfm_strikethrough_single_tilde: true,
+                constructs: markdown::Constructs {
+                    autolink: true,
+                    character_escape: true,
+                    gfm_footnote_definition: true,
+                    gfm_label_start_footnote: true,
+                    gfm_strikethrough: true,
+                    gfm_table: true,
+                    ..Default::default()
+                },
                 ..Default::default()
             },
-            ..Default::default()
+            compile: markdown::CompileOptions::gfm(),
         },
-        compile: markdown::CompileOptions::gfm(),
-    })
+    )
     .unwrap()
 }
 
 #[derive(Debug)]
 pub enum HeaderError {
-    NoValue {
-        key: String,
-    },
-    IO(io::Error)
+    NoValue { key: String },
+    IO(io::Error),
 }
 
 impl std::fmt::Display for HeaderError {
@@ -36,14 +35,13 @@ impl std::fmt::Display for HeaderError {
         match self {
             HeaderError::NoValue { key } => {
                 f.write_str(&format!("No value associated with key '{}'", key))
-            },
+            }
             HeaderError::IO(e) => e.fmt(f),
         }
     }
 }
 
-impl std::error::Error for HeaderError { }
-
+impl std::error::Error for HeaderError {}
 
 impl From<io::Error> for HeaderError {
     fn from(e: io::Error) -> Self {
@@ -58,7 +56,6 @@ pub struct ExtendedMd {
 }
 
 impl ExtendedMd {
-
     pub fn read_header(reader: impl BufRead) -> Result<BTreeMap<String, String>, HeaderError> {
         let mut map = BTreeMap::new();
         for res in reader.lines() {
@@ -73,8 +70,7 @@ impl ExtendedMd {
             if line_trimed.chars().all(|c| c == '-') {
                 if !map.is_empty() {
                     break;
-                }
-                else {
+                } else {
                     // support --- before header
                     continue;
                 }
@@ -83,12 +79,15 @@ impl ExtendedMd {
             if let Some((key, rest)) = line_trimed.split_once(':') {
                 let rest = rest.trim();
                 if rest.is_empty() {
-                    return Err(HeaderError::NoValue { key: line_trimed.to_string() })
+                    return Err(HeaderError::NoValue {
+                        key: line_trimed.to_string(),
+                    });
                 }
                 map.insert(key.to_string(), rest.to_string());
-            }
-            else {
-                return Err(HeaderError::NoValue { key: line_trimed.to_string() })
+            } else {
+                return Err(HeaderError::NoValue {
+                    key: line_trimed.to_string(),
+                });
             }
         }
         Ok(map)
@@ -108,9 +107,7 @@ impl ExtendedMd {
     pub fn to_html(&self) -> String {
         md_to_html(&self.markdown_str)
     }
-
 }
-
 
 #[cfg(test)]
 mod test {
@@ -129,17 +126,23 @@ Meme: Review
 More content
 "#;
         let md = ExtendedMd::from_bufread(Cursor::new(document.as_bytes())).unwrap();
-        assert_eq!(md, ExtendedMd {
-            header: BTreeMap::from_iter(vec![
+        assert_eq!(
+            md,
+            ExtendedMd {
+                header: BTreeMap::from_iter(
+                    vec![
                         ("Title".to_string(), "Hello world".to_string()),
                         ("Author".to_string(), "Louis: Sven".to_string()),
                         ("Meme".to_string(), "Review".to_string()),
-            ].into_iter()),
-            markdown_str: r#"# Actual content
+                    ]
+                    .into_iter()
+                ),
+                markdown_str: r#"# Actual content
 
 More content
-"#.to_string(),
-        });
-
+"#
+                .to_string(),
+            }
+        );
     }
 }
