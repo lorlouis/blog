@@ -192,7 +192,7 @@ del {
     text-decoration-color: var(--white-ish);
 }
 
-blockquote {
+blockquote:not(.blurb) {
     padding: 0.1rem;
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;

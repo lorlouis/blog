@@ -7,7 +7,7 @@ Blurb: type-safe(r) container types
 # How I do (type-safe) container types in C
 
 Recently, after seeing two articles on how to achieve container-types in C,
-I thought I'd also write one.
+I decided I'd also write one.
 
 [Martin Uecker's article](https://uecker.codeberg.page/2025-07-20.html)
 | [HN thread](https://uecker.codeberg.page/2025-07-20.html)
@@ -160,7 +160,7 @@ Inserting the typedef directly in the macro allows me to define this type and
 to export it rather than re-expanding the same macro every time. The main
 drawback of this approach is that typedefs cannot be forward declared but
 `structs` can.
-Take note that the `phantom` field is a zero sized arrow of pointers to `_type`,
+Take note that the `phantom` field is a zero sized array of pointers to `_type`,
 this way I can forward declare `_type`. Also as a bonus, the zero size array is
 a zero-sized type (duh) and, in this case, adds no additional padding.
 
@@ -199,11 +199,9 @@ parameter and the inner type match.
 1 ? (param) : *(vec)->type
 ```
 
-In this case the compiler would warn that the pointer types do no match.
-
-Sadly when it comes time to reading a value out, I haven't found a way to have as
-much control, I instead cast the pointer and expect GCC to tell me those
-pointers are not compatible.
+Sadly when it comes to reading a value out, I haven't found a way to have as
+much control, I instead cast the pointer, which works great for pointer types,
+but I open myself to C type casting rules if I try to dereference that pointer.
 
 ```C
 #define vecGetPtr(vec, idx) ((typeof(*(vec)->phantom))vec_get_ptr(\
@@ -212,7 +210,7 @@ pointers are not compatible.
 IntVec a = {};
 // incompatible pointer types
 double *r1 = vecGetPtr(&a, 1);
-// C numeric type promotion, meh
+// C silent type casting, meh
 double r2 = *vecGetPtr(&a, 1);
 ```
 
@@ -224,7 +222,7 @@ have to worry about type mismatch.
 auto r3 = *vecGetPtr(&a, 1);
 ```
 
-I've found that this technique works pretty great and I've been able to build
+I've found that this technique works pretty well and I've been able to build
 all the reusable data-structure I've needed with it:
 
 An Hashmap
@@ -247,7 +245,9 @@ A Queue
     }
 ```
 
-And many more. The only generic data-structure I use not written in this way is
+And many more.
+
+The only generic data-structure I use not written in this way is
 my implementation of a primary queue, and I'm planning to rewrite this way in
 order to make it type-safe, I just haven't taken the time to do it yet.
 
