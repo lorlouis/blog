@@ -18,7 +18,7 @@ I decided I'd also write one.
 ## Why am I not satisfied with these two articles
 
 The only correct reason is that I suffer from the not-invented-here syndrome,
-but some complaints that would make me not want to use these implementations.
+but I have some complaints that would make me not want to use these implementations.
 
 ### Uecker's way
 
@@ -79,7 +79,7 @@ way that the logic is implemented.
 Having done that in the past, I now tend to avoid including too much logic
 inside my macros because I find that they lead to cryptic error messages and
 sometimes variable name clashes. (Again I suck I naming things)
-I've spent too much grep-ing through the output of `cpp` and I've now switched
+I've spent too much time grep-ing through the output of `cpp` and I've now switched
 to doing something else.
 
 ### Hooper's way
@@ -130,7 +130,7 @@ From Hooper's article:
 I personally don't like how expansions of the same macro won't point back to
 the same type. C23 "fixed" this behaviour with it's named record equivalence
 rule, but for it to work we would need to make the name of the type part of the
-macro and we would run in the same issues with complex types.
+macro and we would run in the same issue with complex types.
 
 ## My way
 
@@ -169,7 +169,7 @@ VecDef(int) IntVec;
 VecDef(struct Pos) PosVec;
 ```
 
-To then get some type safety, I make use of C11's `_Generic` keyword
+To then get some type safety, I make use of C11's `_Generic` keyword.
 
 ```C
 #define vecPush(vec, data) _Generic((data), typeof(**((vec)->phantom)): \
