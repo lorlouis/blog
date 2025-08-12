@@ -33,11 +33,9 @@ having the macro define the name of the Vec.
 
 For "simple types" this works great, `vec(int)` would expand to:
 
-> ```C
-> struct vec_int { ssize_t N, int data[] }
-> ```
->
-> -- *Martin Uecker, Generic Containers in C: vec*
+```C
+struct vec_int { ssize_t N, int data[] }
+```
 
 But for more complex types this would break down pretty quickly.
 
