@@ -17,7 +17,7 @@ I decided I'd also write one.
 
 ## Why am I not satisfied with these two articles
 
-The only correct reason it that I suffer from the not-invented-here syndrome,
+The only correct reason is that I suffer from the not-invented-here syndrome,
 but some complaints that would make me not want to use these implementations.
 
 ### Uecker's way
@@ -140,9 +140,9 @@ of my datastructure that every generic version will wrap.
 ```C
 // aligned on eights (or fours on 32 bit machines)
 struct Vec {
-    size_t len; \
-    size_t cap; \
-    void *data; \
+    size_t len;
+    size_t cap;
+    void *data;
 };
 ```
 
@@ -248,7 +248,7 @@ A Queue
 And many more.
 
 The only generic data-structure I use not written in this way is
-my implementation of a primary queue, and I'm planning to rewrite this way in
+my implementation of a primary queue, and I'm planning to rewrite it this way in
 order to make it type-safe, I just haven't taken the time to do it yet.
 
 [github gist with code examples used in this article](https://gist.github.com/lorlouis/ba227cf544fe917aae0365b41e8c2d04)
